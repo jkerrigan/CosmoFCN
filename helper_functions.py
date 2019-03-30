@@ -2,6 +2,7 @@ import numpy as np
 from glob import glob
 import re
 import h5py
+from scipy.stats import gaussian_kde
 
 def load_21cmCubes():
     # Cubes are in shape 512*512*20
@@ -89,10 +90,10 @@ def random_perm(x):
         return x[::-1,::-1,:]
 
 def scale_sample(data_dict,fgcube=None):
-    # dataset comes in sizes of 512x512x20 (2Gpc,2Gpc,30 z slices)
+    # dataset comes in sizes of 512x512x30 (2Gpc,2Gpc,30 z slices)
     # we want to subsample this space to sizes < 1Gpc
     new_dict = {}
-    scale = np.random.choice(range(32,512,10)) #32 minimum because of pooling operations (min 62.5 Gpc)
+    scale = np.random.choice(range(64,256,30)) #32 minimum because of pooling operations (min 62.5 Gpc)
     print('Sampled to the scale of {} Mpc'.format(2000.*scale/512.))
     print('Length of data {}'.format(len(data_dict['data'])))
     print('Scale {}'.format(scale))
@@ -120,9 +121,10 @@ def scale_sample(data_dict,fgcube=None):
 
 def normalize(data_dict):
     def standard_(x):
-        return (x-np.mean(x))/np.std(x)
+        return x#(x-np.mean(x))/np.std(x)
     try:
         data_dict['data'] = list(map(standard_,data_dict['data']))
+        #norm_dict['labels'] = data_dict['labels']
         return data_dict
     except:
         return standard_(data_dict)
@@ -138,8 +140,8 @@ def scale_(data,scale):
         data_ = data_[:,::-1,:]
     else:
         data_ = data_[::-1,::-1,:]
-    if np.random.rand() > .5:
-        data_ += 0.05*np.std(data_)*np.random.randn(*np.shape(data_))
+    #if np.random.rand() > .5:
+    #    data_ += 0.05*np.std(data_)*np.random.randn(*np.shape(data_))
     return data_
 
 def pull_by_freq(x):
@@ -176,27 +178,60 @@ def expand_cubes(dict_):
     return data_,labels
 
 
-def plot_cosmo_params(t1_arr,p1_arr,param,fname):
+def plot_cosmo_params(t1_arr,p1_arr,param,fname,spec=None):
     from matplotlib import rc
     import matplotlib.gridspec as gridspec
     import matplotlib.pyplot as pl
     rc('text',usetex=True)
+    pl.rcParams.update({'font.size':18})
     fig = pl.figure()
     gs1 = gridspec.GridSpec(3,1)
     ax1 = fig.add_subplot(gs1[:2])
     ax2 = fig.add_subplot(gs1[2])
-    ax1.scatter(t1_arr,p1_arr)
-    ideal = np.linspace(np.min(t1_arr),np.max(t1_arr),10)
-    ax1.plot(ideal,ideal,'--')
+#    ax3 = fig.add_subplot(gs1[2,1])
+#    if spec is not None:
+        #spec is an array with differenced midpoint,mean z
+    s = spec
+#    else:
+#        s = 5
+    print(spec)
+    ax1.scatter(t1_arr,p1_arr,c='black',s=s,alpha=0.5)
+    ideal = np.linspace(0.8*np.min(t1_arr),1.2*np.max(t1_arr),10)
+    ax1.plot(ideal,ideal,'r--')
     ax1.set_xlabel(r'')
-    ax1.set_ylabel(r'Predicted {0}'.format(param))
+    ax1.set_xticklabels([])
+    ax1.locator_params(nbins=5)
+#    pl.xticks(size=15)
+#    pl.yticks(size=15)
+    ax1.set_ylabel(r'Predicted {}'.format(param))
 
-    ax2.plot(t1_arr,100.*(1-np.array(p1_arr)/np.array(t1_arr)),'.')
-    ax2.set_ylim(-20.,20.)
+    ax2.plot(ideal,len(ideal)*[0.],'r--')
+    err = 100.*(1-np.array(p1_arr)/np.array(t1_arr))
+
+    X,Y = np.mgrid[0.95*np.min(t1_arr):1.05*np.max(t1_arr):100j, 0.95*np.min(p1_arr):1.05*np.max(p1_arr):100j]
+    dense_grid = np.vstack([X.ravel(), Y.ravel()])
+    data_arr = np.vstack([t1_arr,p1_arr])
+    
+    kde = gaussian_kde(data_arr)
+    Z = np.reshape(kde(dense_grid).T,X.shape)
+    ax1.imshow(np.rot90(Z),cmap=pl.cm.gist_earth_r,extent=[0.95*np.min(t1_arr),1.05*np.max(t1_arr),0.95*np.min(p1_arr),1.05*np.max(p1_arr)],aspect='auto',alpha=0.8)
+    ax1.set_xlim(0.95*np.min(t1_arr),1.05*np.max(t1_arr))
+    ax1.set_ylim(0.95*np.min(p1_arr),1.05*np.max(p1_arr))
+    
+    ax2.scatter(t1_arr,100.*(1-np.array(p1_arr)/np.array(t1_arr)),c='black',s=s,alpha=0.5)
+    #ax2.plot(t1_arr,100.*(1-np.array(p1_arr)/np.array(t1_arr)),'k.',alpha=0.5)
+
+    ax2.set_ylim(-40.,40.)
+    ax2.locator_params(nbins=5)
+    ax2.set_xlim(0.95*np.min(t1_arr),1.05*np.max(t1_arr))
     ax2.set_ylabel(r'\% error')
-    ax2.set_xlabel(r'True {0}'.format(param))
-    ax1.set_title(r'{0}'.format(param))
-    pl.savefig('{0}.png'.format(fname))
+    ax2.set_xlabel(r'True {}'.format(param))
+    #ax1.set_title(r'{}'.format(param))
+
+ #   density = kde(np.linspace(-30,30,100))
+ #   ax3.plot(density,np.linspace(-30,30,100))
+    pl.tight_layout()
+    pl.savefig('{}.pdf'.format(fname),dpi=300)
     pl.close()
 
 

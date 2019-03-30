@@ -1,11 +1,12 @@
 from keras.layers import LeakyReLU,BatchNormalization
 from keras.layers import Conv2D,MaxPool2D,GlobalMaxPooling2D
-from keras.layers import Input, Dense, Reshape, Multiply, Lambda, concatenate
+from keras.layers import Input, Dense, Reshape, Multiply, Lambda, concatenate, Dropout
 from keras.models import Model
 from keras.optimizers import Adam
 from keras.models import model_from_json
 import helper_functions as hf
 import numpy as np
+import gc
 
 def stacked_layer(x,ksize=3,fsize=128,psize=(8,8)):
     x_1 = Conv2D(filters=fsize,kernel_size=ksize,padding='same',strides=1)(x)
@@ -25,16 +26,16 @@ class FCN21CM():
     
     def FCN(self):
         inputs = Input(shape=self.cube_size)
-        s1_ss = stacked_layer(inputs,ksize=3,fsize=32,psize=(2,2)) # 64,64,10,64
-        s1_ms = stacked_layer(inputs,ksize=5,fsize=32,psize=(2,2))
-        s1_ls = stacked_layer(inputs,ksize=7,fsize=32,psize=(2,2))
+        s1_ss = Dropout(rate=0.3)(stacked_layer(inputs,ksize=7,fsize=64,psize=2)) # 64,64,10,64
+        s1_ms = Dropout(rate=0.3)(stacked_layer(inputs,ksize=5,fsize=64,psize=2))
+        s1_ls = Dropout(rate=0.3)(stacked_layer(inputs,ksize=3,fsize=64,psize=2))
         s1_ = concatenate([s1_ss,s1_ms],axis=-1)
         s1 = concatenate([s1_,s1_ls],axis=-1)
         print(np.shape(s1))
-        s2 = stacked_layer(s1,ksize=3,fsize=128,psize=(2,2)) # 16,16,10,128
-        s3 = stacked_layer(s2,ksize=3,fsize=256,psize=(2,2)) # 4,4,5,256
-        fc1 = stacked_layer(s3,ksize=3,fsize=512,psize=(2,2)) # 1,1,1,2048
-        out = Conv2D(filters=5,kernel_size=1,padding='same')(fc1)
+        s2 = stacked_layer(s1,ksize=3,fsize=64,psize=2) # 16,16,10,128
+        s3 = stacked_layer(s2,ksize=3,fsize=128,psize=2) # 4,4,5,256
+        fc1 = stacked_layer(s3,ksize=3,fsize=256,psize=2) # 1,1,1,2048
+        out = Conv2D(filters=5,kernel_size=3,padding='same')(fc1)
         max_out = GlobalMaxPooling2D()(out)
 #        out = Reshape((2,))(max_out)
 #        out = Lambda(lambda x: x)(out)#Multiply()([20,out])
@@ -51,7 +52,7 @@ class FCN21CM():
         self.fcn_model = self.FCN()
         print(self.fcn_model.summary())
         print('Doing a 80/20 Dataset Split.')
-        print('Building several realizations of point source foregrounds...')
+#        print('Building several realizations of point source foregrounds...')
         if fgcube:
             fgs = hf.load_FGCubes(fgcube)
             data_dict['foregrounds'] = fgs
@@ -77,6 +78,7 @@ class FCN21CM():
         val_labels = np.array(labels[int(length*0.8):])
         
         #fcn_model.fit(self.data,self.labels)
+        gc.enable() #attempt garbage collection to release resources
         for e in range(epochs):
             rnd_ind_t = np.random.choice(range(len(train_labels)),size=batch_size)
             rnd_ind_v = np.random.choice(range(len(val_labels)),size=batch_size)
