@@ -1,4 +1,4 @@
-from keras.layers import LeakyReLU,BatchNormalization
+from keras.layers import ReLU,BatchNormalization
 from keras.layers import Conv2D,MaxPool2D,GlobalMaxPooling2D
 from keras.layers import Input, Dense, Reshape, Multiply, Lambda, concatenate, Dropout
 from keras.models import Model
@@ -6,19 +6,23 @@ from keras.optimizers import Adam
 from keras.models import model_from_json
 import helper_functions as hf
 import numpy as np
+import matplotlib
+matplotlib.use('AGG')
+import matplotlib.pyplot as pl
 import gc
 
-def stacked_layer(x,ksize=3,fsize=128,psize=(8,8)):
-    x_1 = Conv2D(filters=fsize,kernel_size=ksize,padding='same',strides=1)(x)
+def stacked_layer(x,ksize=3,fsize=128,psize=(8,8),weights=None):
+    x_1 = Conv2D(filters=fsize,kernel_size=ksize,padding='same',strides=1,weights=weights)(x)
     x_2 = MaxPool2D(pool_size=psize)(x_1)
 #    x_3 = Conv2D(filters=fsize,kernel_size=1,padding='same',strides=1)(x_1)
-    x_3 = LeakyReLU()(x_2)
+    x_3 = ReLU()(x_2)
     x_4 = BatchNormalization()(x_3)
     return x_4
 
 class FCN21CM():
-    def __init__(self,lr=0.003):
+    def __init__(self,lr=0.003,model_name='Null'):
         optimizer = Adam(lr=lr)
+        self.model_name = model_name
         self.X_size = None
         self.Y_size = None
         self.Z_size = 30
@@ -26,25 +30,47 @@ class FCN21CM():
     
     def FCN(self):
         inputs = Input(shape=self.cube_size)
-        s1_ss = Dropout(rate=0.3)(stacked_layer(inputs,ksize=7,fsize=64,psize=2)) # 64,64,10,64
-        s1_ms = Dropout(rate=0.3)(stacked_layer(inputs,ksize=5,fsize=64,psize=2))
-        s1_ls = Dropout(rate=0.3)(stacked_layer(inputs,ksize=3,fsize=64,psize=2))
-        s1_ = concatenate([s1_ss,s1_ms],axis=-1)
-        s1 = concatenate([s1_,s1_ls],axis=-1)
-        print(np.shape(s1))
-        s2 = stacked_layer(s1,ksize=3,fsize=64,psize=2) # 16,16,10,128
-        s3 = stacked_layer(s2,ksize=3,fsize=128,psize=2) # 4,4,5,256
-        fc1 = stacked_layer(s3,ksize=3,fsize=256,psize=2) # 1,1,1,2048
-        out = Conv2D(filters=5,kernel_size=3,padding='same')(fc1)
-        max_out = GlobalMaxPooling2D()(out)
-#        out = Reshape((2,))(max_out)
-#        out = Lambda(lambda x: x)(out)#Multiply()([20,out])
+        self.s1 = stacked_layer(inputs,ksize=11,fsize=64,psize=4) # 64,64,10,64
+        #s1_ms = Dropout(rate=0.5)(stacked_layer(inputs,ksize=7,fsize=64,psize=4))
+        #s1_ls = Dropout(rate=0.5)(stacked_layer(inputs,ksize=3,fsize=64,psize=4))
+        #xs1_ = concatenate([s1_ss,s1_ms],axis=-1)
+        #s1 = concatenate([s1_,s1_ls],axis=-1)
+        self.s2 = Dropout(rate=0.5)(stacked_layer(self.s1,ksize=7,fsize=128,psize=2)) # 16,16,10,128
+        self.s3 = stacked_layer(self.s2,ksize=5,fsize=256,psize=2) # 4,4,5,256
+        self.fc1 = Dropout(rate=0.5)(stacked_layer(self.s3,ksize=3,fsize=512,psize=2)) # 1,1,1,2048
+        out = Conv2D(filters=5,kernel_size=3,padding='same')(self.fc1)
+        self.max_out = GlobalMaxPooling2D()(out)
         
-        model = Model(inputs=inputs,outputs=max_out)
+        model = Model(inputs=inputs,outputs=self.max_out)
         model.compile(optimizer='adam',
-              loss='mean_squared_error',
+              loss='logcosh',
               metrics=['accuracy'])
         return model
+
+    def probe_FCN(self):
+        inputs = Input(shape=self.cube_size)
+        self.s1_ = stacked_layer(inputs,ksize=11,fsize=64,psize=4,weights=self.s1.get_weights())
+        if layer2output == '1':
+            model = Model(inputs=inputs,outputs=self.s1_)
+            return model
+        self.s2_ = stacked_layer(self.s1_,ksize=7,fsize=128,psize=2,weights=self.s2.get_weights())
+        if layer2output == '2':
+            model = Model(inputs=inputs,outputs=self.s2_)
+            return model
+        self.s3_ = stacked_layer(self.s2_,ksize=5,fsize=256,psize=2,weights=self.s3.get_weights())
+        if layer2output == '3':
+            model = Model(inputs=inputs,outputs=self.s3_)
+            return model
+        self.fc1_ = stacked_layer(self.s3_,ksize=3,fsize=512,psize=2,weights=self.fc1.get_weights())
+        if layer2output == '4':
+            model = Model(inputs=inputs,outputs=self.fc1_)
+            return model
+        out = Conv2D(filters=5,kernel_size=3,padding='same')(self.fc1_)
+        self.max_out = GlobalMaxPooling2D()(out)
+        if layer2output == '5':
+            model = Model(inputs=inputs,outputs=self.max_out)
+            return model
+
         
     def train(self,data_dict,epochs=10000,batch_size=12,scalar_=1e5,fgcube=None):
         loss_arr_t = []
@@ -98,21 +124,29 @@ class FCN21CM():
                 del(data_dict_)
                 train_data = np.array(data[:int(length*0.8)])
                 val_data = np.array(data[int(length*0.8):])
-
+        plot_loss(self.model_name,range(epochs),loss_arr_t,loss_arr_v)
         return self.fcn_model
 
-    def save(self,model='model.json'):
+    def save(self):
         print('Saving trained model...')
-        self.fcn_model.save_weights(model.split('.')[0]+'.h5')
+        self.fcn_model.save_weights(self.model_name+'.h5')
         model_json = self.fcn_model.to_json()
-        with open(model, "w") as json_file:
+        with open(self.model_name+'.json', "w") as json_file:
             json_file.write(model_json)
         print('Model saved.')
-
-    def load(self,model='model.json'):
-        json_file = open(model,'r')
+        
+    def load(self):
+        json_file = open(self.model_name+'.json','r')
         loaded_model_json = json_file.read()
         json_file.close()
         self.fcn_model = model_from_json(loaded_model_json)
-        self.fcn_model.load_weights(model.split('.')[0]+'.h5')
+        self.fcn_model.load_weights(self.model_name+'.h5')
         print('Model loaded.')
+
+def plot_loss(model_name,iters,train_loss,val_loss):
+    pl.plot(iters,train_loss,label='Training loss')
+    pl.plot(iters,val_loss,label='Evaluation loss')
+    pl.xlabel('Iterations')
+    pl.ylabel('loss')
+    pl.legend()
+    pl.savefig(model_name+'_loss.pdf',dpi=300)

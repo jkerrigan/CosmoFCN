@@ -14,10 +14,10 @@ data_dict = load_21cmCubes()
 #data = data_dict['data']
 #labels = data_dict['labels']
 
-fcn = FCN21CM(lr=0.003)
-fcn.load('ProofOfConcept.json')
-#fcn.train(data_dict,epochs=5000,batch_size=64,scalar_=1e0,fgcube=None)
-#fcn.save('ProofOfConcept.json')
+fcn = FCN21CM(lr=0.03,model_name='ProofOfConcept_Standardize')
+#fcn.load()
+fcn.train(data_dict,epochs=5000,batch_size=128,scalar_=1e0,fgcube=None)
+fcn.save()
 
 
 # zmid, delta_z, zmean, alpha, kb
@@ -35,7 +35,7 @@ t5_arr = []
 
 ssize = []
 
-for i in range(500):
+for i in range(1000):
     print('Predicting on sample {0}')
     redshifts = data_dict['redshifts']
     eor_amp = data_dict['eor_amp']
@@ -45,7 +45,7 @@ for i in range(500):
     #else:
     combined_cubes = data_dict['data'][-np.mod(i,200)]
     print(np.shape(combined_cubes))
-    rnd_scale = i/2 + 64#np.random.choice(range(64,256,1))
+    rnd_scale = np.random.choice(range(64,512,1))
     data_sample = hf.scale_(hf.normalize(combined_cubes),rnd_scale).reshape(1,rnd_scale,rnd_scale,30)
     label_sample = data_dict['labels'][-np.mod(i,200)]
     print('scaled sample shape',np.shape(data_sample))
@@ -62,7 +62,7 @@ for i in range(500):
     t3_arr.append(label_sample[2])
     t4_arr.append(label_sample[3])
     t5_arr.append(label_sample[4])
-pl.plot(np.array(ssize)*2000./512.,np.abs(np.array(t2_arr)-np.array(p2_arr)))
+pl.plot(np.array(ssize)*2000./512.,np.abs(np.array(t2_arr)-np.array(p2_arr)),'.')
 pl.xlabel('Cube Size (Mpc)')
 pl.ylabel('error %')
 pl.savefig('ErrorVsSize.pdf',dpi=300)

@@ -121,7 +121,7 @@ def scale_sample(data_dict,fgcube=None):
 
 def normalize(data_dict):
     def standard_(x):
-        return x#(x-np.mean(x))/np.std(x)
+        return (x-np.mean(x))/np.std(x)
     try:
         data_dict['data'] = list(map(standard_,data_dict['data']))
         #norm_dict['labels'] = data_dict['labels']
@@ -133,13 +133,13 @@ def scale_(data,scale):
     s_x = np.random.choice(range(512-scale))
     s_y = np.random.choice(range(512-scale))
     data_ = data[s_x:scale+s_x,s_y:s_y+scale,:]
-    rnd = np.random.rand()
-    if rnd > 0.3:
-        data_ = data_[::-1,:,:]
-    elif rnd > 0.3 and rnd <= 0.6:
-        data_ = data_[:,::-1,:]
-    else:
-        data_ = data_[::-1,::-1,:]
+    #rnd = np.random.rand()
+    #if rnd > 0.3:
+    #    data_ = data_[::-1,:,:]
+    #elif rnd > 0.3 and rnd <= 0.6:
+    #    data_ = data_[:,::-1,:]
+    #else:
+    #    data_ = data_[::-1,::-1,:]
     #if np.random.rand() > .5:
     #    data_ += 0.05*np.std(data_)*np.random.randn(*np.shape(data_))
     return data_
@@ -221,7 +221,7 @@ def plot_cosmo_params(t1_arr,p1_arr,param,fname,spec=None):
     ax2.scatter(t1_arr,100.*(1-np.array(p1_arr)/np.array(t1_arr)),c='black',s=s,alpha=0.5)
     #ax2.plot(t1_arr,100.*(1-np.array(p1_arr)/np.array(t1_arr)),'k.',alpha=0.5)
 
-    ax2.set_ylim(-40.,40.)
+    ax2.set_ylim(-20.,20.)
     ax2.locator_params(nbins=5)
     ax2.set_xlim(0.95*np.min(t1_arr),1.05*np.max(t1_arr))
     ax2.set_ylabel(r'\% error')
