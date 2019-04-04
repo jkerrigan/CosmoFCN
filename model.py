@@ -11,12 +11,17 @@ matplotlib.use('AGG')
 import matplotlib.pyplot as pl
 import gc
 
-def stacked_layer(x,ksize=3,fsize=128,psize=(8,8),weights=None):
-    x_1 = Conv2D(filters=fsize,kernel_size=ksize,padding='same',strides=1,weights=weights)(x)
-    x_2 = MaxPool2D(pool_size=psize)(x_1)
-#    x_3 = Conv2D(filters=fsize,kernel_size=1,padding='same',strides=1)(x_1)
-    x_3 = ReLU()(x_2)
-    x_4 = BatchNormalization()(x_3)
+def stacked_layer(x,ksize=3,fsize=128,psize=(8,8),weights=None,trainable=True):
+    if weights == None:
+        x_1 = Conv2D(filters=fsize,kernel_size=ksize,padding='same',strides=1,trainable=trainable)(x)
+        x_2 = MaxPool2D(pool_size=psize)(x_1)
+        x_3 = ReLU()(x_2)
+        x_4 = BatchNormalization()(x_3)
+    else:
+        x_1 = Conv2D(filters=fsize,kernel_size=ksize,padding='same',strides=1,weights=weights[:2],trainable=trainable)(x)
+        x_2 = MaxPool2D(pool_size=psize)(x_1)
+        x_3 = ReLU()(x_2)
+        x_4 = BatchNormalization(weights=weights[2:])(x_3)
     return x_4
 
 class FCN21CM():
@@ -38,8 +43,8 @@ class FCN21CM():
         self.s2 = Dropout(rate=0.5)(stacked_layer(self.s1,ksize=7,fsize=128,psize=2)) # 16,16,10,128
         self.s3 = stacked_layer(self.s2,ksize=5,fsize=256,psize=2) # 4,4,5,256
         self.fc1 = Dropout(rate=0.5)(stacked_layer(self.s3,ksize=3,fsize=512,psize=2)) # 1,1,1,2048
-        out = Conv2D(filters=5,kernel_size=3,padding='same')(self.fc1)
-        self.max_out = GlobalMaxPooling2D()(out)
+        self.out = Conv2D(filters=5,kernel_size=3,padding='same')(self.fc1)
+        self.max_out = GlobalMaxPooling2D()(self.out)
         
         model = Model(inputs=inputs,outputs=self.max_out)
         model.compile(optimizer='adam',
@@ -47,35 +52,60 @@ class FCN21CM():
               metrics=['accuracy'])
         return model
 
-    def probe_FCN(self):
+    def probe_FCN(self,layer2output=None,weights=None):
         inputs = Input(shape=self.cube_size)
-        self.s1_ = stacked_layer(inputs,ksize=11,fsize=64,psize=4,weights=self.s1.get_weights())
+        print('w1',np.shape(weights))
+        self.s1_ = stacked_layer(inputs,ksize=11,fsize=64,psize=4,weights=weights[:6])
         if layer2output == '1':
             model = Model(inputs=inputs,outputs=self.s1_)
             return model
-        self.s2_ = stacked_layer(self.s1_,ksize=7,fsize=128,psize=2,weights=self.s2.get_weights())
+#        print('w2',np.shape(weights[1]))
+        self.s2_ = stacked_layer(self.s1_,ksize=7,fsize=128,psize=2,weights=weights[6:12])
         if layer2output == '2':
             model = Model(inputs=inputs,outputs=self.s2_)
             return model
-        self.s3_ = stacked_layer(self.s2_,ksize=5,fsize=256,psize=2,weights=self.s3.get_weights())
+#        print('w3',np.shape(weights[2]))
+        self.s3_ = stacked_layer(self.s2_,ksize=5,fsize=256,psize=2,weights=weights[12:18])
         if layer2output == '3':
             model = Model(inputs=inputs,outputs=self.s3_)
             return model
-        self.fc1_ = stacked_layer(self.s3_,ksize=3,fsize=512,psize=2,weights=self.fc1.get_weights())
+        self.fc1_ = stacked_layer(self.s3_,ksize=3,fsize=512,psize=2,weights=weights[18:24])
         if layer2output == '4':
             model = Model(inputs=inputs,outputs=self.fc1_)
             return model
-        out = Conv2D(filters=5,kernel_size=3,padding='same')(self.fc1_)
-        self.max_out = GlobalMaxPooling2D()(out)
+        self.out_ = Conv2D(filters=5,kernel_size=3,padding='same',weights=weights[24:26])(self.fc1_)
+        self.max_out = GlobalMaxPooling2D(weights=weights[26:30])(self.out_)
         if layer2output == '5':
             model = Model(inputs=inputs,outputs=self.max_out)
             return model
+#0,1,6,7,12,13,18,19,24,25
+    def get_probes(self):
+        layers = [str(i) for i in range(1,6)]
+        weight_layers = self.get_weights()
+        pred_layers = [self.probe_FCN(layer,weights=weight_layers) for layer in layers]
+        return pred_layers, weight_layers
 
-        
+    def get_weights(self):
+        #print([weight.name for layer in self.fcn_model.layers for weight in layer.weights])
+        #print([weight for layer in self.fcn_model.layers for weight in layer.get_weights()])
+#        for w in self.fcn_model.get_weights():
+#            print(np.shape(w))
+        #weights_ = np.reshape(self.fcn_model.get_weights()[:16],(-1,4)) #[np.array((self.fcn_model.get_weights()[i],self.fcn_model.get_weights()[i+1])) for i,w in enumerate(self.fcn_model.get_weights()) if i in range(0,40,6)]
+        #weights = [weights_,self.fcn_model.get_weights()[16:18],self.fcn_model.get_weights()[18:]] #5x4 and 6
+        weights = [weight for layer in self.fcn_model.layers for weight in layer.get_weights()]
+        print(np.shape(weights))
+        print('Got weights')
+#        weights = [model_layer.get_weights()[0] for model_layer in self.fcn_model]
+        return weights
+    
     def train(self,data_dict,epochs=10000,batch_size=12,scalar_=1e5,fgcube=None):
         loss_arr_t = []
         loss_arr_v = []
-        self.fcn_model = self.FCN()
+        if 'self.fcn_model' in globals():
+            print('Model valid.')
+        else:
+            print('No model found, starting from scratch.')
+            self.fcn_model = self.FCN()
         print(self.fcn_model.summary())
         print('Doing a 80/20 Dataset Split.')
 #        print('Building several realizations of point source foregrounds...')
@@ -90,9 +120,9 @@ class FCN21CM():
         else:
             print('No foregrounds included.')
         print('Scaling down cubes...')
-        data_dict_ = hf.scale_sample(data_dict)
+#        data_dict_ = hf.scale_sample(data_dict)
         print('Normalizing scaled data cubes...')
-        data_dict_ = hf.normalize(data_dict_)
+        data_dict_ = hf.normalize(data_dict) # normalize all data once and first
         data = data_dict_['data']
         labels = data_dict_['labels']
         redshifts = data_dict_['redshifts']
@@ -106,24 +136,36 @@ class FCN21CM():
         #fcn_model.fit(self.data,self.labels)
         gc.enable() #attempt garbage collection to release resources
         for e in range(epochs):
+            print(e)
             rnd_ind_t = np.random.choice(range(len(train_labels)),size=batch_size)
             rnd_ind_v = np.random.choice(range(len(val_labels)),size=batch_size)
-            fcn_loss = self.fcn_model.train_on_batch(train_data[rnd_ind_t],train_labels[rnd_ind_t])
-            val_loss = self.fcn_model.test_on_batch(val_data[rnd_ind_v],val_labels[rnd_ind_v])
+
+            train_scale = train_data[rnd_ind_t]
+            val_scale = val_data[rnd_ind_v]
+            train_dict = {'data':train_scale,'labels':train_labels[rnd_ind_t],'redshifts':[]}
+            val_dict = {'data':val_scale,'labels':val_labels[rnd_ind_v],'redshifts':[]}
+            train_dict = hf.scale_sample(train_dict)
+            val_dict = hf.scale_sample(val_dict)
+            print('Train data shape: ',np.shape(train_dict['data']))
+
+            fcn_loss = self.fcn_model.train_on_batch(np.array(train_dict['data']),train_labels[rnd_ind_t])
+            val_loss = self.fcn_model.test_on_batch(np.array(val_dict['data']),val_labels[rnd_ind_v])
             loss_arr_t.append(fcn_loss[0])
             loss_arr_v.append(val_loss[0])
+            del(val_dict)
+            del(train_dict)
             print('Epoch: {0} Train Loss: {1} Validation Loss: {2}'.format(e,fcn_loss[0],val_loss[0]))
-            if e % 500==0 and e!=0:
-                del(train_data)
-                del(val_data)
-                print('Rescaling down new cubes...')
-                data_dict_ = hf.scale_sample(data_dict)
-                print('Normalizing new scaled data cubes...')
-                data_dict_ = hf.normalize(data_dict_)
-                data = np.copy(data_dict_['data'])
-                del(data_dict_)
-                train_data = np.array(data[:int(length*0.8)])
-                val_data = np.array(data[int(length*0.8):])
+#            if e % 500==0 and e!=0:
+#                del(train_data)
+#                del(val_data)
+#                print('Rescaling down new cubes...')
+#                data_dict_ = hf.scale_sample(data_dict)
+#                print('Normalizing new scaled data cubes...')
+#                data_dict_ = hf.normalize(data_dict_)
+#                data = np.copy(data_dict_['data'])
+#                del(data_dict_)
+#                train_data = np.array(data[:int(length*0.8)])
+#                val_data = np.array(data[int(length*0.8):])
         plot_loss(self.model_name,range(epochs),loss_arr_t,loss_arr_v)
         return self.fcn_model
 
