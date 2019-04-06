@@ -8,6 +8,7 @@ from ipywidgets import FloatProgress # For displaying training progress bar
 from IPython.display import display, clear_output 
 from keras.datasets import mnist
 from keras.utils import to_categorical
+from scipy.signal import convolve2d
 
 
 class EKFCNN():
@@ -25,12 +26,15 @@ class EKFCNN():
         self.x_ensemble = x_ensemble
         self.pred_outputs = [pred.predict(self.x_ensemble) for pred in self.probes]
         self.Qs = [get_QCNN(pred_out) for pred_out in self.pred_outputs]
+        print([np.mean(q) for q in self.Qs])
         print('Q matrices computed.')
 
     def pred_uncertainty(self,x):
         Qs = np.copy(self.Qs)
         weight_layers = self.weight_layers#[model_layer.get_weights()[0] for model_layer in self.model] #this may not be correct
-        covmat_0 = np.identity(30)
+        stds_diag = [np.std(x[:,:,i]) for i in range(20)]
+        covmat_0 = np.diag(stds_diag)#np.identity(20)
+        print('Initial covariance estimate: {}'.format(stds_diag))
         pred_layers_b = [pred.predict(x) for pred in self.probes]
         jacobians = [jacobianCNN(plb,wl) for plb,wl in zip(pred_layers_b,weight_layers)]
         covar_out = covar_recursive(covmat_0,jacobians,Qs)
@@ -51,31 +55,56 @@ def covar_recursive(cov0,jacobians,Qs):
 def jacobianCNN(x,W):
     w_sh = np.shape(W)
     print('jacobian W shape:',w_sh)
-    F = np.zeros((w_sh[2],w_sh[3]))
-    if np.ndim(x) > 2:
-        x = x.mean(axis=(0,1,2))
+    F = np.zeros((w_sh[3],w_sh[2]))
+    print('x shape',np.shape(x))
+    if np.ndim(x) > 3:
+        x = np.median(x,axis=(0,1,2))
+    else:
+        x = np.median(x,axis=0)
     x = x.reshape(-1)
-    W = W.mean(axis=(0,1))
+#    print('x shape',np.shape(x))
+    W = tensor_conv2d(W)
+    W = np.median(W,axis=(0,1))
+    print('Max W',np.max(W))
     for i in range(w_sh[-1]):
-        if x[i]>0.:
-            F[:,i] = W[:,i]
-    return F.T#reshape(w_sh[3],w_sh[2])
-        
+        if x[i] > 0.:
+            F[i,:] = W[:,i]
+    return F
+
+def relu_where(W,x):
+    sh = np.shape(W)
+    W_out = np.zeros_like(W)
+    for i in range(sh[3]):
+        for j in range(sh[2]):
+            W_out[:,:,j,i] = np.where(x[:,:,i] > 0.,W[:,:,j,i],0.)
+    return W_out
+            
 def get_QCNN(x):
     x_sh = np.shape(x)
     print('x shape',np.shape(x))
     Q = np.zeros((x_sh[-1],x_sh[-1]))
     if np.ndim(x) > 2:
-        x_red = x.mean(axis=(1,2))
-        x_mu = x.mean(axis=(1,2)) # average over all samples
-        x_mu = x_mu.mean(axis=0)
+        x_red = np.median(x,axis=(1,2))#x.median(axis=(1,2))
+        #x_mu = np.median(x_mu,axis=(1,2))
+        x_mu = x_red.mean(axis=0) # average over all samples
+        #x_mu = x_mu.mean(axis=0)
     else:
         x_mu = x.mean(axis=0)
+    # x batchx512x512x20  --> batchx20
     for i in range(x_sh[-1]):
         for j in range(x_sh[-1]):
             try:
                 Q[i,j] = np.sum((x_red[:,i]-x_mu[i])*(x_red[:,j]-x_mu[j]))
             except:
                 Q[i,j] = np.sum((x[:,i]-x_mu[i])*(x[:,j]-x_mu[j]))
+#    Q = np.zeros((x_sh[-1],x_sh[-1]))
     return Q/(x_sh[0]-1.)
 
+def tensor_conv2d(W):
+    x = np.ones_like(W[:,:,0,0])
+    sh = np.shape(W)
+    out = np.zeros_like(W)
+    for i in range(sh[2]):
+        for j in range(sh[3]):
+            out[:,:,i,j] = convolve2d(W[:,:,i,j],x,mode='same')
+    return out

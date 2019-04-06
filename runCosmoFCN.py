@@ -16,9 +16,9 @@ data_dict = load_21cmCubes()
 #data = data_dict['data']
 #labels = data_dict['labels']
 
-fcn = FCN21CM(lr=0.003,model_name='ProofOfConcept_Standardize')
+fcn = FCN21CM(lr=0.003,model_name='ProofOfConcept')
 fcn.load()
-#fcn.train(data_dict,epochs=1000,batch_size=32,scalar_=1e0,fgcube=None)
+#fcn.train(data_dict,epochs=1000,batch_size=16,scalar_=1e0,fgcube=None)
 #fcn.save()
 
 
@@ -44,10 +44,13 @@ p4_arr_err = []
 p5_arr_err = []
 
 if EKF:
+    rnd_scale = np.random.choice(range(64,256,1))
+    dset_EKF = data_dict['data'][:200]
+    print('EKF dataset size: {}'.format(np.shape(dset_EKF)))
+    scaled_EKF_data = np.array(list(map(hf.scale_,list(map(hf.normalize,dset_EKF)),200*[rnd_scale]))).reshape(200,rnd_scale,rnd_scale,20)
     probes,weights = fcn.get_probes()
     ekf_model = EKFCNN(probes,weights)
-    ekf_model.run_EKF(data_dict['data'][:300])
-    
+    ekf_model.run_EKF(scaled_EKF_data)
 
 for i in range(200):
     print('Predicting on sample {0}')
@@ -60,7 +63,9 @@ for i in range(200):
     combined_cubes = data_dict['data'][-np.mod(i,200)]
     print(np.shape(combined_cubes))
     rnd_scale = np.random.choice(range(64,512,1))
-    data_sample = hf.scale_(hf.normalize(combined_cubes),rnd_scale).reshape(1,rnd_scale,rnd_scale,30)
+    #noise = np.zeros((512,512,20))#
+    noise = np.random.rand(512,512,20)
+    data_sample = hf.scale_(hf.normalize(combined_cubes+10.*np.random.randn()*noise),rnd_scale).reshape(1,rnd_scale,rnd_scale,20)
     label_sample = data_dict['labels'][-np.mod(i,200)]
     print('scaled sample shape',np.shape(data_sample))
     predict = fcn.fcn_model.predict(data_sample)[0]
@@ -69,34 +74,34 @@ for i in range(200):
     
     p1_arr.append(predict[0])
     p2_arr.append(predict[1])
-    p3_arr.append(predict[2])
-    p4_arr.append(predict[3])
-    p5_arr.append(predict[4])
+#    p3_arr.append(predict[2])
+#    p4_arr.append(predict[3])
+#    p5_arr.append(predict[4])
     ssize.append(rnd_scale)
 
     t1_arr.append(label_sample[0])
     t2_arr.append(label_sample[1])
-    t3_arr.append(label_sample[2])
-    t4_arr.append(label_sample[3])
-    t5_arr.append(label_sample[4])
+#    t3_arr.append(label_sample[2])
+#    t4_arr.append(label_sample[3])
+#    t5_arr.append(label_sample[4])
     print('NamesL {}'.format(['midpoint','duration','meanz','alpha','k0']))
     print('Predicted Error: {}'.format(predict_err))
     p1_arr_err.append(predict_err[0])
     p2_arr_err.append(predict_err[1])
-    p3_arr_err.append(predict_err[2])
-    p4_arr_err.append(predict_err[3])
-    p5_arr_err.append(predict_err[4])
+#    p3_arr_err.append(predict_err[2])
+#    p4_arr_err.append(predict_err[3])
+#    p5_arr_err.append(predict_err[4])
     
 pl.plot(np.array(ssize)*2000./512.,np.abs(np.array(t2_arr)-np.array(p2_arr)),'.')
 pl.xlabel('Cube Size (Mpc)')
 pl.ylabel('error %')
 pl.savefig('ErrorVsSize.pdf',dpi=300)
     
-predict_arr = [p1_arr,p2_arr,p3_arr,p4_arr,p5_arr]
-true_arr = [t1_arr,t2_arr,t3_arr,t4_arr,t5_arr]
-error_arr = [p1_arr_err,p2_arr_err,p3_arr_err,p4_arr_err,p5_arr_err]
-pnames = ['$z_{50\%}$','$\Delta z$','$\overline{z}$','alpha','$k_{0}$']
-fnames = ['midpoint','duration','meanz','alpha','k0']
+predict_arr = [p1_arr,p2_arr]#,p3_arr,p4_arr,p5_arr]
+true_arr = [t1_arr,t2_arr]#,t3_arr,t4_arr,t5_arr]
+error_arr = [p1_arr_err,p2_arr_err]#,p3_arr_err,p4_arr_err,p5_arr_err]
+pnames = ['$z_{50\%}$','$\Delta z$']#,'$\overline{z}$','alpha','$k_{0}$']
+fnames = ['midpoint','duration']#,'meanz','alpha','k0']
 
 if save:
     np.savez('fg_scalar_{0}.npz'.format(scalar),true=true_arr,predicted=predict_arr,names=fnames)

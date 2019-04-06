@@ -15,13 +15,13 @@ def stacked_layer(x,ksize=3,fsize=128,psize=(8,8),weights=None,trainable=True):
     if weights == None:
         x_1 = Conv2D(filters=fsize,kernel_size=ksize,padding='same',strides=1,trainable=trainable)(x)
         x_2 = MaxPool2D(pool_size=psize)(x_1)
-        x_3 = ReLU()(x_2)
-        x_4 = BatchNormalization()(x_3)
+        x_3 = BatchNormalization()(x_2)
+        x_4 = ReLU()(x_3)
     else:
         x_1 = Conv2D(filters=fsize,kernel_size=ksize,padding='same',strides=1,weights=weights[:2],trainable=trainable)(x)
         x_2 = MaxPool2D(pool_size=psize)(x_1)
-        x_3 = ReLU()(x_2)
-        x_4 = BatchNormalization(weights=weights[2:])(x_3)
+        x_3 = BatchNormalization(weights=weights[2:])(x_2)
+        x_4 = ReLU()(x_3)
     return x_4
 
 class FCN21CM():
@@ -30,7 +30,7 @@ class FCN21CM():
         self.model_name = model_name
         self.X_size = None
         self.Y_size = None
-        self.Z_size = 30
+        self.Z_size = 20
         self.cube_size = (self.X_size,self.Y_size,self.Z_size)
     
     def FCN(self):
@@ -40,15 +40,15 @@ class FCN21CM():
         #s1_ls = Dropout(rate=0.5)(stacked_layer(inputs,ksize=3,fsize=64,psize=4))
         #xs1_ = concatenate([s1_ss,s1_ms],axis=-1)
         #s1 = concatenate([s1_,s1_ls],axis=-1)
-        self.s2 = Dropout(rate=0.5)(stacked_layer(self.s1,ksize=7,fsize=128,psize=2)) # 16,16,10,128
+        self.s2 = Dropout(rate=0.1)(stacked_layer(self.s1,ksize=7,fsize=128,psize=2)) # 16,16,10,128
         self.s3 = stacked_layer(self.s2,ksize=5,fsize=256,psize=2) # 4,4,5,256
-        self.fc1 = Dropout(rate=0.5)(stacked_layer(self.s3,ksize=3,fsize=512,psize=2)) # 1,1,1,2048
-        self.out = Conv2D(filters=5,kernel_size=3,padding='same')(self.fc1)
+        self.fc1 = Dropout(rate=0.1)(stacked_layer(self.s3,ksize=3,fsize=512,psize=2)) # 1,1,1,2048
+        self.out = Conv2D(filters=2,kernel_size=3,padding='same')(self.fc1)
         self.max_out = GlobalMaxPooling2D()(self.out)
         
         model = Model(inputs=inputs,outputs=self.max_out)
         model.compile(optimizer='adam',
-              loss='logcosh',
+              loss='mean_squared_error',
               metrics=['accuracy'])
         return model
 
@@ -73,7 +73,7 @@ class FCN21CM():
         if layer2output == '4':
             model = Model(inputs=inputs,outputs=self.fc1_)
             return model
-        self.out_ = Conv2D(filters=5,kernel_size=3,padding='same',weights=weights[24:26])(self.fc1_)
+        self.out_ = Conv2D(filters=2,kernel_size=3,padding='same',weights=weights[24:26])(self.fc1_)
         self.max_out = GlobalMaxPooling2D(weights=weights[26:30])(self.out_)
         if layer2output == '5':
             model = Model(inputs=inputs,outputs=self.max_out)
@@ -142,30 +142,30 @@ class FCN21CM():
 
             train_scale = train_data[rnd_ind_t]
             val_scale = val_data[rnd_ind_v]
-            train_dict = {'data':train_scale,'labels':train_labels[rnd_ind_t],'redshifts':[]}
-            val_dict = {'data':val_scale,'labels':val_labels[rnd_ind_v],'redshifts':[]}
-            train_dict = hf.scale_sample(train_dict)
-            val_dict = hf.scale_sample(val_dict)
-            print('Train data shape: ',np.shape(train_dict['data']))
+#            train_dict = {'data':train_scale,'labels':train_labels[rnd_ind_t],'redshifts':[]}
+#            val_dict = {'data':val_scale,'labels':val_labels[rnd_ind_v],'redshifts':[]}
+#            train_dict = hf.scale_sample(train_dict)
+#            val_dict = hf.scale_sample(val_dict)
+#            print('Train data shape: ',np.shape(train_dict['data']))
 
-            fcn_loss = self.fcn_model.train_on_batch(np.array(train_dict['data']),train_labels[rnd_ind_t])
-            val_loss = self.fcn_model.test_on_batch(np.array(val_dict['data']),val_labels[rnd_ind_v])
+            fcn_loss = self.fcn_model.train_on_batch(np.array(train_data[rnd_ind_t]),train_labels[rnd_ind_t])
+            val_loss = self.fcn_model.test_on_batch(np.array(val_data[rnd_ind_v]),val_labels[rnd_ind_v])
             loss_arr_t.append(fcn_loss[0])
             loss_arr_v.append(val_loss[0])
-            del(val_dict)
-            del(train_dict)
+#            del(val_dict)
+#            del(train_dict)
             print('Epoch: {0} Train Loss: {1} Validation Loss: {2}'.format(e,fcn_loss[0],val_loss[0]))
-#            if e % 500==0 and e!=0:
-#                del(train_data)
-#                del(val_data)
-#                print('Rescaling down new cubes...')
-#                data_dict_ = hf.scale_sample(data_dict)
-#                print('Normalizing new scaled data cubes...')
-#                data_dict_ = hf.normalize(data_dict_)
-#                data = np.copy(data_dict_['data'])
-#                del(data_dict_)
-#                train_data = np.array(data[:int(length*0.8)])
-#                val_data = np.array(data[int(length*0.8):])
+            if e % 500==0 and e!=0:
+                del(train_data)
+                del(val_data)
+                print('Rescaling down new cubes...')
+                data_dict_ = hf.scale_sample(data_dict)
+                print('Normalizing new scaled data cubes...')
+                data_dict_ = hf.normalize(data_dict_)
+                data = np.copy(data_dict_['data'])
+                del(data_dict_)
+                train_data = np.array(data[:int(length*0.8)])
+                val_data = np.array(data[int(length*0.8):])
         plot_loss(self.model_name,range(epochs),loss_arr_t,loss_arr_v)
         return self.fcn_model
 
