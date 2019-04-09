@@ -8,13 +8,13 @@ def load_21cmCubes():
     # Cubes are in shape 512*512*20
     # Output will be in (X,Y,Z) = (512,512,20)
 #    with h5py.File('/pylon5/as5fp5p/plaplant/21cm/t21_snapshots_downsample.hdf5') as f:
-    with h5py.File('/data4/plaplant/21cm/t21_snapshots_downsample.hdf5') as f:
-    #with h5py.File('/data4/plaplant/21cm/t21_snapshots_downsample_vary_both.hdf5') as f:
+#    with h5py.File('/data4/plaplant/21cm/t21_snapshots_downsample.hdf5') as f:
+    with h5py.File('/data4/plaplant/21cm/t21_snapshots_downsample_vary_both.hdf5') as f:
         print f.keys()
         data_dict = {}
         data_dict['redshifts'] = f['Data']['layer_redshifts'][...]
         data_dict['data'] = [cube.T for cube in f['Data']['t21_snapshots'][...]]
-        data_dict['labels'] = f['Data']['snapshot_labels'][...]
+        data_dict['labels'] = f['Data']['snapshot_labels'][...][:,:3]
         data_dict['eor_amp'] = np.max(data_dict['data'][0])
     print('Dataset size {0}'.format(np.shape(data_dict['data'])))
     print('Label size {0}'.format(np.shape(data_dict['labels'])))
@@ -122,7 +122,7 @@ def scale_sample(data_dict,fgcube=None):
 
 def normalize(data_dict):
     def standard_(x):
-        return (x - np.mean(x))/(np.max(x)-np.min(x))
+        return x#(x - np.mean(x))/(np.max(x)-np.min(x))
     try:
         data_dict['data'] = list(map(standard_,data_dict['data']))
         #norm_dict['labels'] = data_dict['labels']
@@ -200,11 +200,11 @@ def plot_cosmo_params(t1_arr,p1_arr,err_arr,param,fname,spec=None):
     s = spec
 #    else:
 #        s = 5
-    print(spec)
+    #print(spec)
     ax1.errorbar(t1_arr,p1_arr,yerr=err_arr,alpha=0.5,fmt='.',color='black')
 #    ax1.scatter(t1_arr,p1_arr,c='black',s=s,alpha=0.5)
     ideal = np.linspace(0.8*np.min(t1_arr),1.2*np.max(t1_arr),10)
-    ax1.set_ylim(np.min(p1_arr-err_arr)*0.9,np.max(p1_arr+err_arr)*1.1)
+#    ax1.set_ylim(np.min(p1_arr-err_arr)*0.9,np.max(p1_arr+err_arr)*1.1)
     ax1.plot(ideal,ideal,'r--')
     ax1.set_xlabel(r'')
     ax1.set_xticklabels([])
@@ -224,7 +224,7 @@ def plot_cosmo_params(t1_arr,p1_arr,err_arr,param,fname,spec=None):
     Z = np.reshape(kde(dense_grid).T,X.shape)
     ax1.imshow(np.rot90(Z),cmap=pl.cm.gist_earth_r,extent=[0.95*np.min(t1_arr),1.05*np.max(t1_arr),0.95*np.min(p1_arr),1.05*np.max(p1_arr)],aspect='auto',alpha=0.8)
     ax1.set_xlim(0.95*np.min(t1_arr),1.05*np.max(t1_arr))
-#    ax1.set_ylim(0.95*np.min(p1_arr),1.05*np.max(p1_arr))
+    ax1.set_ylim(0.95*np.min(p1_arr),1.05*np.max(p1_arr))
     
     ax2.scatter(t1_arr,100.*(1-np.array(p1_arr)/np.array(t1_arr)),c='black',s=s,alpha=0.5)
     #ax2.plot(t1_arr,100.*(1-np.array(p1_arr)/np.array(t1_arr)),'k.',alpha=0.5)
