@@ -10,14 +10,20 @@ import matplotlib.gridspec as gridspec
 import matplotlib.pyplot as pl
 rc('text',usetex=True)
 pl.rcParams.update({'font.size':18})
-
+import socket
+import os
 
 def load_21cmCubes():
-    # Cubes are in shape 512*512*20
-    # Output will be in (X,Y,Z) = (512,512,20)
+    # Cubes are in shape 512*512*30
+    # Output will be in (X,Y,Z) = (512,512,30)
 #    with h5py.File('/pylon5/as5fp5p/plaplant/21cm/t21_snapshots_downsample.hdf5') as f:
 #    with h5py.File('/data4/plaplant/21cm/t21_snapshots_downsample.hdf5') as f:
-    file_ = '/data4/plaplant/21cm/t21_snapshots_downsample_vary_both.hdf5'
+    host = socket.getfqdn()
+    print('Looking for data according to hostname: {}'.format(host))
+    if host.rfind('intrepid') > 0:
+        file_ = '/data4/plaplant/21cm/t21_snapshots_downsample_vary_both.hdf5'
+    elif host.rfind('brown') > 0:
+        file_ = os.path.expanduser('~/data/shared/LaPlanteSims/t21_snapshots_downsample_vary_both.hdf5')
 #    file_ = './21cmFastSlices.hdf5'
     with h5py.File(file_) as f:
         print f.keys()
@@ -292,4 +298,4 @@ def plot_cosmo_params(t1_arr,p1_arr,err_arr,param,fname,spec=None):
 
 if __name__ == "__main__":
     print('Helper function script.')
-    load_21cmFastCubes()
+    load_21cmCubes()
