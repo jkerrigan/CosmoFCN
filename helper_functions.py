@@ -3,17 +3,27 @@ from glob import glob
 import re
 import h5py
 from scipy.stats import gaussian_kde
+import matplotlib
+matplotlib.use('AGG')
+from matplotlib import rc
+import matplotlib.gridspec as gridspec
+import matplotlib.pyplot as pl
+rc('text',usetex=True)
+pl.rcParams.update({'font.size':18})
+
 
 def load_21cmCubes():
     # Cubes are in shape 512*512*20
     # Output will be in (X,Y,Z) = (512,512,20)
 #    with h5py.File('/pylon5/as5fp5p/plaplant/21cm/t21_snapshots_downsample.hdf5') as f:
 #    with h5py.File('/data4/plaplant/21cm/t21_snapshots_downsample.hdf5') as f:
-    with h5py.File('/data4/plaplant/21cm/t21_snapshots_downsample_vary_both.hdf5') as f:
+    file_ = '/data4/plaplant/21cm/t21_snapshots_downsample_vary_both.hdf5'
+#    file_ = './21cmFastSlices.hdf5'
+    with h5py.File(file_) as f:
         print f.keys()
         data_dict = {}
         data_dict['redshifts'] = f['Data']['layer_redshifts'][...]
-        data_dict['data'] = [cube.T for cube in f['Data']['t21_snapshots'][...]]
+        data_dict['data'] = np.asarray([cube.T for cube in f['Data']['t21_snapshots'][...]])
         data_dict['labels'] = f['Data']['snapshot_labels'][...][:,:3]
         data_dict['eor_amp'] = np.max(data_dict['data'][0])
     print('Dataset size {0}'.format(np.shape(data_dict['data'])))
@@ -122,9 +132,9 @@ def scale_sample(data_dict,fgcube=None):
 
 def normalize(data_dict):
     def standard_(x):
-        return x#(x - np.mean(x))/(np.max(x)-np.min(x))
+        return (x - np.mean(x))/np.std(x)#(np.max(x)-np.min(x))
     try:
-        data_dict['data'] = list(map(standard_,data_dict['data']))
+        data_dict['data'] = np.asarray(list(map(standard_,data_dict['data'])))
         #norm_dict['labels'] = data_dict['labels']
         return data_dict
     except:
@@ -135,15 +145,15 @@ def scale_(data,scale):
     s_y = np.random.choice(range(512-scale))
     data_ = data[s_x:scale+s_x,s_y:s_y+scale,:]
     rnd = np.random.rand()
-    if rnd > 0.3:
-        data_ = data_[::-1,:,:]
-    elif rnd > 0.3 and rnd <= 0.6:
-        data_ = data_[:,::-1,:]
-    else:
-        data_ = data_[::-1,::-1,:]
+#    if rnd > 0.3:
+#        data_ = data_[::-1,:,:]
+#    elif rnd > 0.3 and rnd <= 0.6:
+#        data_ = data_[:,::-1,:]
+#    else:
+#        data_ = data_[::-1,::-1,:]
     #if np.random.rand() > .5:
     #    data_ += 0.05*np.std(data_)*np.random.randn(*np.shape(data_))
-    return data_
+    return np.asarray(data_)
 
 def pull_by_freq(x):
     return [x[:,:,i] for i in range(len(x[0,0,:]))]
@@ -178,14 +188,48 @@ def expand_cubes(dict_):
     labels = np.array([128*[label] for label in labels]).reshape(-1)
     return data_,labels
 
+def empirical_error_plots(t1_arr,p1_arr,err_arr,param,fname,spec=None):
+    # t1_err should all be the same
+    p1_max = np.max(p1_arr)
+    p1_min = np.min(p1_arr)
+    err_min = np.min(err_arr)
+    
+    pl.figure()
+    ax1 = pl.subplot(211)
+#    ax1.set_title(param)
+    ax1.axvline(np.mean(t1_arr),0.,1.,linestyle='--',color='black',label='{0}$_{{pred}}$'.format(param))
+    ax1.axvline(np.mean(p1_arr),0.,1.,linestyle='--',color='red',label='${0}$'.format(param))
+    
+#    ax1.text(np.mean(t1_arr)*0.95,0.1,r'${0}$'.format(param),rotation=90.)
+#    ax1.text(np.mean(p1_arr)*0.95,0.1,r'{0}$_{{pred}}$'.format(param),rotation=90.)
+    ax1.errorbar(p1_arr,np.linspace(0.,1,len(p1_arr)),xerr=err_arr,fmt='k.',markersize=2,ecolor='b',alpha=.4)
+    ax1.set_xlim(p1_min*0.95,p1_max*1.05)
+    ax1.set_xticks([])
+    ax1.set_yticks([])
+    ax1.legend()
+#    pl.xlabel('Predicted {}'.format(param))
+    
+    pl.subplot(212)
+    std_rnd = np.round(float(np.std(p1_arr)),2)
+    mean_rnd = np.round(float(np.mean(err_arr)),2)
+    pl.hist(p1_arr,histtype='step',fill=False,label='$\sigma_{e}$'+': {0:.2f}'.format(std_rnd))
+    pl.hist(p1_arr,histtype='step',fill=False,label='$\bar{\sigma}_{EKF}$'+': {0:.2f}'.format(mean_rnd))
+#    pl.text(p1_min*1.05,20,r'$\sigma_{e}$'+': {0:.2f}'.format(std_rnd))
+#    pl.text(p1_min*1.05,10,r'$\bar{\sigma}_{EKF}$'+': {0:.2f}'.format(mean_rnd))
+    pl.xlim(p1_min*0.95,p1_max*1.05)
+    pl.xlabel('Predicted {}'.format(param))
+    pl.legend()
+    pl.tight_layout()
 
+#    pl.subplot(313)
+#    pl.hist(err_arr)
+#    pl.text(err_min*1.05,0.5,'avg: '+str(np.round(np.mean(err_arr),4)))
+#    pl.axvline(np.round(np.std(p1_arr),4),linestyle='--',label='Empirical Std')
+#    pl.xlabel('Uncertainties')
+#    pl.legend()
+    pl.savefig('empirical_errs_{}.pdf'.format(fname))
+        
 def plot_cosmo_params(t1_arr,p1_arr,err_arr,param,fname,spec=None):
-    from matplotlib import rc
-    import matplotlib.gridspec as gridspec
-    import matplotlib.pyplot as pl
-    rc('text',usetex=True)
-    pl.rcParams.update({'font.size':18})
-
     t1_arr = np.array(t1_arr)
     p1_arr = np.array(p1_arr)
     err_arr = np.array(err_arr)
@@ -197,14 +241,14 @@ def plot_cosmo_params(t1_arr,p1_arr,err_arr,param,fname,spec=None):
 #    ax3 = fig.add_subplot(gs1[2,1])
 #    if spec is not None:
         #spec is an array with differenced midpoint,mean z
-    s = spec
+    s = spec/5.
 #    else:
 #        s = 5
     #print(spec)
-    ax1.errorbar(t1_arr,p1_arr,yerr=err_arr,alpha=0.5,fmt='.',color='black')
-#    ax1.scatter(t1_arr,p1_arr,c='black',s=s,alpha=0.5)
+#    ax1.errorbar(t1_arr,p1_arr,yerr=err_arr,alpha=0.5,fmt='.',color='black')
+    ax1.scatter(t1_arr,p1_arr,c='black',s=s,alpha=0.5)
     ideal = np.linspace(0.8*np.min(t1_arr),1.2*np.max(t1_arr),10)
-#    ax1.set_ylim(np.min(p1_arr-err_arr)*0.9,np.max(p1_arr+err_arr)*1.1)
+    ax1.set_ylim(np.min(p1_arr-err_arr)*0.9,np.max(p1_arr+err_arr)*1.1)
     ax1.plot(ideal,ideal,'r--')
     ax1.set_xlabel(r'')
     ax1.set_xticklabels([])
@@ -216,28 +260,29 @@ def plot_cosmo_params(t1_arr,p1_arr,err_arr,param,fname,spec=None):
     ax2.plot(ideal,len(ideal)*[0.],'r--')
     err = 100.*(1-np.array(p1_arr)/np.array(t1_arr))
 
-    X,Y = np.mgrid[0.95*np.min(t1_arr):1.05*np.max(t1_arr):100j, 0.95*np.min(p1_arr):1.05*np.max(p1_arr):100j]
+    X,Y = np.mgrid[0.80*np.min(t1_arr):1.2*np.max(t1_arr):100j, 0.80*np.min(p1_arr):1.2*np.max(p1_arr):100j]
     dense_grid = np.vstack([X.ravel(), Y.ravel()])
     data_arr = np.vstack([t1_arr,p1_arr])
     
-    kde = gaussian_kde(data_arr)
-    Z = np.reshape(kde(dense_grid).T,X.shape)
-    ax1.imshow(np.rot90(Z),cmap=pl.cm.gist_earth_r,extent=[0.95*np.min(t1_arr),1.05*np.max(t1_arr),0.95*np.min(p1_arr),1.05*np.max(p1_arr)],aspect='auto',alpha=0.8)
+#    kde = gaussian_kde(data_arr)
+#    Z = np.reshape(kde(dense_grid).T,X.shape)
+#    ax1.imshow(np.rot90(Z),cmap=pl.cm.gist_earth_r,extent=[0.95*np.min(t1_arr),1.05*np.max(t1_arr),0.95*np.min(p1_arr),1.05*np.max(p1_arr)],aspect='auto',alpha=0.8)
     ax1.set_xlim(0.95*np.min(t1_arr),1.05*np.max(t1_arr))
-    ax1.set_ylim(0.95*np.min(p1_arr),1.05*np.max(p1_arr))
+#    ax1.set_ylim(0.95*np.min(p1_arr),1.05*np.max(p1_arr))
     
     ax2.scatter(t1_arr,100.*(1-np.array(p1_arr)/np.array(t1_arr)),c='black',s=s,alpha=0.5)
     #ax2.plot(t1_arr,100.*(1-np.array(p1_arr)/np.array(t1_arr)),'k.',alpha=0.5)
 
-    ax2.set_ylim(-20.,20.)
+    diffPredicted = 100.*(1-np.array(p1_arr)/np.array(t1_arr))
+    ax2.set_ylim(np.min(diffPredicted)*0.95,np.max(diffPredicted)*1.05)
     ax2.locator_params(nbins=5)
     ax2.set_xlim(0.95*np.min(t1_arr),1.05*np.max(t1_arr))
     ax2.set_ylabel(r'\% error')
     ax2.set_xlabel(r'True {}'.format(param))
     #ax1.set_title(r'{}'.format(param))
 
- #   density = kde(np.linspace(-30,30,100))
- #   ax3.plot(density,np.linspace(-30,30,100))
+#    density = kde(np.linspace(-30,30,100))
+#    ax3.plot(density,np.linspace(-30,30,100))
     pl.tight_layout()
     pl.savefig('{}.pdf'.format(fname),dpi=300)
     pl.close()

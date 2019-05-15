@@ -16,12 +16,12 @@ data_dict = load_21cmCubes()
 #data = data_dict['data']
 #labels = data_dict['labels']
 
-fcn = FCN21CM(lr=0.003,model_name='ProofOfConcept_NoStandard')
+fcn = FCN21CM(lr=0.003,model_name='ProofOfConcept_Standard')
 try:
     fcn.load()
 except:
     print('Model load error.')
-#fcn.train(data_dict,epochs=3000,batch_size=32,scalar_=1e0,fgcube=None)
+#fcn.train(data_dict,epochs=100000,batch_size=16,scalar_=1e0,fgcube=None)
 #fcn.save()
 
 
@@ -47,17 +47,19 @@ p4_arr_err = []
 p5_arr_err = []
 
 if EKF:
-    cov_num = 100
+    cov_num = 200
     rnd_scale = 128#np.random.choice(range(64,256,1))
-    dset_EKF = data_dict['data'][:cov_num]
+#    dset_EKF = data_dict['data'][:cov_num]
+    dset_EKF = [data_dict['data'][920] for i in range(cov_num)]
     print('EKF dataset size: {}'.format(np.shape(dset_EKF)))
-    scaled_EKF_data = np.array(list(map(hf.scale_,list(map(hf.normalize,dset_EKF)),cov_num*[rnd_scale]))).reshape(cov_num,rnd_scale,rnd_scale,30)
+    scaled_EKF_data = np.asarray(list(map(hf.scale_,list(map(hf.normalize,dset_EKF)),cov_num*[rnd_scale]))).reshape(cov_num,rnd_scale,rnd_scale,30)
+    print('Scaled EKF data',np.shape(scaled_EKF_data))
     probes,weights = fcn.get_probes()
     ekf_model = EKFCNN(probes,weights)
     ekf_model.run_EKF(scaled_EKF_data)
 
-snr = np.linspace(0.,10.,200)
-for i in range(200):
+snr = np.linspace(.01,.01,50)
+for i in range(50):
     print('Predicting on sample {0}')
     redshifts = data_dict['redshifts']
     eor_amp = data_dict['eor_amp']
@@ -65,21 +67,22 @@ for i in range(200):
     #    fgs = build_fg_z_cube(redshifts,eor_amp,scalar)
     #    combined_cubes = np.add(data_dict['data'][-i],fgs)
     #else:
-    combined_cubes = data_dict['data'][-np.mod(i,200)]
+    combined_cubes = data_dict['data'][910]#-np.mod(i,200)]
     print(np.shape(combined_cubes))
-    rnd_scale = 128 #np.random.choice(range(64,512,1))
+    rnd_scale = np.random.choice(range(64,256,1))
     #noise = np.zeros((512,512,30))#
 
-    noise =  np.random.normal(loc=0.,scale=snr[i],size=(512,512,30))#snr[i]*np.std(combined_cubes)*np.random.rand(512,512,30)
+    noise =  snr[i]*np.random.normal(loc=0.,scale=snr[i]*np.std(combined_cubes),size=(512,512,30))#snr[i]*np.std(combined_cubes)*np.random.rand(512,512,30)
     print('Data std: {}'.format(np.std(combined_cubes)))
     print('Noise std: {}'.format(np.std(noise)))
+    #data_sample = np.expand_dims(combined_cubes,axis=0)
     data_sample = hf.scale_(hf.normalize(combined_cubes + noise),rnd_scale).reshape(1,rnd_scale,rnd_scale,30)
-    label_sample = data_dict['labels'][-np.mod(i,200)]
+    label_sample = data_dict['labels'][910]#-np.mod(i,200)]
     print('scaled sample shape',np.shape(data_sample))
     predict = fcn.fcn_model.predict(data_sample)[0]
 
     predict_err = ekf_model.pred_uncertainty(data_sample)
-    
+    print('Predicted Midpoint {0} Duration {1} Mean Z {2}'.format(*predict))
     p1_arr.append(predict[0])
     p2_arr.append(predict[1])
     p3_arr.append(predict[2])
@@ -122,9 +125,11 @@ fnames = ['midpoint','duration','meanz']#,'alpha','k0']
 if save:
     np.savez('fg_scalar_{0}.npz'.format(scalar),true=true_arr,predicted=predict_arr,names=fnames)
 
+np.savez('predictions_output.npz',targets=true_arr,predictions=predict_arr,names=fnames)
 for i,(p_,f_) in enumerate(zip(pnames,fnames)):
 #    if f_ == 'duration':
     spec = 30.*(np.array(ssize)/256.)#np.exp(np.array(true_arr[0]) - np.array(true_arr[2]))
 #    else:
 #        spec = None
     plot_cosmo_params(true_arr[i],predict_arr[i],error_arr[i],p_,f_,spec=spec)
+    hf.empirical_error_plots(true_arr[i],predict_arr[i],error_arr[i],p_,f_,spec=spec)

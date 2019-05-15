@@ -40,9 +40,9 @@ class FCN21CM():
         #s1_ls = Dropout(rate=0.5)(stacked_layer(inputs,ksize=3,fsize=64,psize=4))
         #xs1_ = concatenate([s1_ss,s1_ms],axis=-1)
         #s1 = concatenate([s1_,s1_ls],axis=-1)
-        self.s2 = Dropout(rate=0.2)(stacked_layer(self.s1,ksize=7,fsize=128,psize=2)) # 16,16,10,128
+        self.s2 = Dropout(rate=0.4)(stacked_layer(self.s1,ksize=7,fsize=128,psize=2)) # 16,16,10,128
         self.s3 = stacked_layer(self.s2,ksize=5,fsize=256,psize=2) # 4,4,5,256
-        self.fc1 = Dropout(rate=0.2)(stacked_layer(self.s3,ksize=3,fsize=512,psize=2)) # 1,1,1,2048
+        self.fc1 = Dropout(rate=0.4)(stacked_layer(self.s3,ksize=3,fsize=512,psize=2)) # 1,1,1,2048
         self.out = Conv2D(filters=3,kernel_size=3,padding='same')(self.fc1)
         self.max_out = GlobalMaxPooling2D()(self.out)
         
@@ -55,6 +55,8 @@ class FCN21CM():
     def probe_FCN(self,layer2output=None,weights=None):
         inputs = Input(shape=self.cube_size)
         print('w1',np.shape(weights))
+        if layer2output == '0':
+            model = Model(inputs=inputs,outputs=inputs)
         self.s1_ = stacked_layer(inputs,ksize=11,fsize=64,psize=4,weights=weights[:6])
         if layer2output == '1':
             model = Model(inputs=inputs,outputs=self.s1_)
@@ -76,7 +78,7 @@ class FCN21CM():
         self.out_ = Conv2D(filters=3,kernel_size=3,padding='same',weights=weights[24:26])(self.fc1_)
         self.max_out = GlobalMaxPooling2D(weights=weights[26:30])(self.out_)
         if layer2output == '5':
-            model = Model(inputs=inputs,outputs=self.max_out)
+            model = Model(inputs=inputs,outputs=self.out_)
             return model
 #0,1,6,7,12,13,18,19,24,25
     def get_probes(self):
@@ -155,7 +157,7 @@ class FCN21CM():
 #            del(val_dict)
 #            del(train_dict)
             print('Epoch: {0} Train Loss: {1} Validation Loss: {2}'.format(e,fcn_loss[0],val_loss[0]))
-            if e % 500==0 and e!=0:
+            if e % 100==0 and e!=0:
                 del(train_data)
                 del(val_data)
                 print('Rescaling down new cubes...')
@@ -186,9 +188,9 @@ class FCN21CM():
         print('Model loaded.')
 
 def plot_loss(model_name,iters,train_loss,val_loss):
-    pl.plot(iters,train_loss,label='Training loss')
-    pl.plot(iters,val_loss,label='Evaluation loss')
-    pl.xlabel('Iterations')
-    pl.ylabel('loss')
+    pl.plot(iters,np.log10(train_loss),label='Training loss')
+    pl.plot(iters,np.log10(val_loss),label='Evaluation loss')
+    pl.xlabel('Number of Iterations')
+    pl.ylabel('Log MSE Loss')
     pl.legend()
     pl.savefig(model_name+'_loss.pdf',dpi=300)
