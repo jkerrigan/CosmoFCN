@@ -1,5 +1,5 @@
 from model import FCN21CM
-from helper_functions import load_21cmCubes,plot_cosmo_params,build_fg_z_cube
+from helper_functions import load_21cmCubes,plot_cosmo_params
 import helper_functions as hf
 import matplotlib
 matplotlib.use('AGG')

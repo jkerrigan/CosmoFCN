@@ -51,13 +51,13 @@ def redshift_avg(z0,z_diff=0.4):
     low_freq = freqs[z0_ind-adj_z_diff_low[0]]
     return low_freq,high_freq
 
-def z_block((f1,f2)):
-    freqs = np.linspace(20.,300.,1024)
-    f1_ind = np.argmin(np.abs(f1-freqs))
-    f2_ind = np.argmin(np.abs(f2-freqs))
-    block = np.zeros(1024)
-    block[f1_ind:f2_ind] = 1.
-    return block
+#def z_block(f1,f2):
+#    freqs = np.linspace(20.,300.,1024)
+#    f1_ind = np.argmin(np.abs(f1-freqs))
+#    f2_ind = np.argmin(np.abs(f2-freqs))
+#    block = np.zeros(1024)
+#    block[f1_ind:f2_ind] = 1.
+#    return block
 
 def fg_cube(n,mean_amp):
     # RA,DEC,Freq.
@@ -87,15 +87,15 @@ def convolve(sky,beam):
     BEAM = np.fft.fft2(beam)
     return np.fft.ifft2(SKY*BEAM).real
 
-def build_fg_z_cube(rs,eor_amp,scalar=1e5):
-    n_sources = int(np.random.normal(loc=8000,scale=2000))
-    cube = fg_cube(n_sources,scalar*eor_amp)
-    rs_freqs = list(map(redshift_avg,rs))
-    z_mask = list(map(z_block,rs_freqs))
-    fg_z_cube = list(map(mean_z,len(z_mask)*[cube],z_mask)) #[mean_z(cube,zm) for zm in z_mask]
-    gauss = gaussian(512,512,10.)
-    dirty_cube = np.array(list(map(convolve,fg_z_cube,len(rs)*[gauss]))).T
-    return dirty_cube
+#def build_fg_z_cube(rs,eor_amp,scalar=1e5):
+#    n_sources = int(np.random.normal(loc=8000,scale=2000))
+#    cube = fg_cube(n_sources,scalar*eor_amp)
+#    rs_freqs = list(map(redshift_avg,rs))
+#    z_mask = list(map(z_block,rs_freqs))
+#    fg_z_cube = list(map(mean_z,len(z_mask)*[cube],z_mask)) #[mean_z(cube,zm) for zm in z_mask]
+#    gauss = gaussian(512,512,10.)
+#    dirty_cube = np.array(list(map(convolve,fg_z_cube,len(rs)*[gauss]))).T
+#    return dirty_cube
 
 def random_perm(x):
     rnd = np.random.rand()
