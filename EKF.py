@@ -196,7 +196,7 @@ def get_QCNN(x):
 #    x = np.where(x>0.,x,0.)
     try:
         x = x.reshape(x_sh[0],-1,x_sh[3])
-        Q_quad = [Q_(x[:,i,:]) for i in range(np.shape(x)[1])]
+        Q_quad = np.array([Q_(x[:,i,:]) for i in range(np.shape(x)[1])])
 #        Q_quad = np.sqrt(np.sum([Q_(x[:,i,:])**2 for i in range(np.shape(x)[1])],axis=0))
 #        Q_quad /= np.nansum(Q_quad)
     except:
