@@ -79,7 +79,7 @@ def covar_recursive(cov0,jacobians,Qs):
         #jacob = jacobians[0][0]
         jacobs_masked = np.ma.array(jacobians[0],mask=jacobians[0]<0.)
         jacob = np.ma.mean(jacobians[0],axis=0)
-        sigmas = (np.matmul(jacob,np.matmul(cov0,jacob.T)))
+        sigmas = np.ma.dot(jacob,np.ma.dot(cov0,jacob.T))#(np.matmul(jacob,np.matmul(cov0,jacob.T)))
 #        sigmas = np.nanmean([(np.matmul(jacob,np.matmul(cov0,jacob.T))) for jacob in jacobians[0]],axis=0)
 #        sigmas = (np.matmul(jacob,np.matmul(cov0,jacob.T)))
 #        sigmas = np.sqrt(np.nansum([(np.matmul(jacob,np.matmul(cov0,jacob.T)))**2 for jacob in jacobians[0]],axis=0))
