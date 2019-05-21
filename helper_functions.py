@@ -26,7 +26,7 @@ def load_21cmCubes():
         file_ = os.path.expanduser('~/data/shared/LaPlanteSims/t21_snapshots_downsample_vary_both.hdf5')
 #    file_ = './21cmFastSlices.hdf5'
     with h5py.File(file_) as f:
-        print f.keys()
+        print(f.keys())
         data_dict = {}
         data_dict['redshifts'] = f['Data']['layer_redshifts'][...]
         data_dict['data'] = np.asarray([cube.T for cube in f['Data']['t21_snapshots'][...]])
@@ -219,7 +219,7 @@ def empirical_error_plots(t1_arr,p1_arr,err_arr,param,fname,spec=None):
     std_rnd = np.round(float(np.std(p1_arr)),2)
     mean_rnd = np.round(float(np.mean(err_arr)),2)
     pl.hist(p1_arr,histtype='step',fill=False,label='$\sigma_{e}$'+': {0:.2f}'.format(std_rnd))
-    pl.hist(p1_arr,histtype='step',fill=False,label='$\bar{\sigma}_{EKF}$'+': {0:.2f}'.format(mean_rnd))
+    pl.hist(p1_arr,histtype='step',fill=False,label='$\sigma_{EKF}$'+': {0:.2f}'.format(mean_rnd))
 #    pl.text(p1_min*1.05,20,r'$\sigma_{e}$'+': {0:.2f}'.format(std_rnd))
 #    pl.text(p1_min*1.05,10,r'$\bar{\sigma}_{EKF}$'+': {0:.2f}'.format(mean_rnd))
     pl.xlim(p1_min*0.95,p1_max*1.05)
@@ -292,7 +292,6 @@ def plot_cosmo_params(t1_arr,p1_arr,err_arr,param,fname,spec=None):
     pl.tight_layout()
     pl.savefig('{}.pdf'.format(fname),dpi=300)
     pl.close()
-
 
 
 

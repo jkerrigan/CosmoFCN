@@ -7,6 +7,8 @@ import numpy as np
 import pylab as pl
 import sys
 from EKF import EKFCNN
+from tensorflow.python.client import device_lib
+print(device_lib.list_local_devices())
 
 save = False
 EKF = True
