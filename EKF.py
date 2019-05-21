@@ -200,7 +200,7 @@ def get_QCNN(x):
 #        Q_quad = np.sqrt(np.sum([Q_(x[:,i,:])**2 for i in range(np.shape(x)[1])],axis=0))
 #        Q_quad /= np.nansum(Q_quad)
     except:
-        Q_quad = Q_(x)
+        Q_quad = np.array(Q_(x))
     Q_quad_mask = np.ma.array(Q_quad,mask=Q_quad<=0.)
     Q_quad = np.ma.median(Q_quad_mask,axis=0)
 #    x_sh = np.shape(x)
