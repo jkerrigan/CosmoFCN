@@ -9,22 +9,24 @@ import sys
 from EKF import EKFCNN
 from tensorflow.python.client import device_lib
 print(device_lib.list_local_devices())
+import os
 
 save = False
-EKF = True
-# Load data
+EKF = False
 
-data_dict = load_21cmCubes()
-#data = data_dict['data']
-#labels = data_dict['labels']
+# Load training data
+data_dict_train = load_21cmCubes_2(os.path.expanduser('~/data/shared/LaPlanteSims/sort_zcut8.0_high.h5'))
 
-fcn = FCN21CM(lr=0.003,model_name='ProofOfConcept_Standard')
+# Initialize neural network model
+fcn = FCN21CM(lr=0.003,model_name='RE_v1')
 try:
     fcn.load()
 except:
     print('Model load error.')
-#fcn.train(data_dict,epochs=100000,batch_size=16,scalar_=1e0,fgcube=None)
-#fcn.save()
+# Begin training cycles
+fcn.train(data_dict_train,epochs=100,batch_size=16,scalar_=1e0,fgcube=None)
+# Save the trained model
+fcn.save()
 
 
 # zmid, delta_z, zmean, alpha, kb
@@ -61,15 +63,17 @@ if EKF:
     ekf_model.run_EKF(scaled_EKF_data)
 
 snr = np.linspace(.01,.01,50)
+
+data_dict_predict = load_21cmCubes_2(os.path.expanduser('~/data/shared/LaPlanteSims/sort_zcut8.0_low.h5'))
 for i in range(50):
     print('Predicting on sample {0}')
-    redshifts = data_dict['redshifts']
-    eor_amp = data_dict['eor_amp']
+#    redshifts = data_dict['redshifts']
+#    eor_amp = data_dict['eor_amp']
     #if False:#np.random.rand()>1.1:
     #    fgs = build_fg_z_cube(redshifts,eor_amp,scalar)
     #    combined_cubes = np.add(data_dict['data'][-i],fgs)
     #else:
-    combined_cubes = data_dict['data'][910]#-np.mod(i,200)]
+    combined_cubes = data_dict_predict['data'][i]
     print(np.shape(combined_cubes))
     rnd_scale = np.random.choice(range(64,256,1))
     #noise = np.zeros((512,512,30))#

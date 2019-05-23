@@ -36,6 +36,16 @@ def load_21cmCubes():
     print('Label size {0}'.format(np.shape(data_dict['labels'])))
     return data_dict
 
+def load_21cmCubes_2(file_ = None):
+    if file_:
+        with h5py.File(file_) as f:
+            data_dict = {}
+            data_dict['data'] = f['Data']['t21_snapshots'][...]
+            data_dict['labels'] = f['Data']['snapshot_labels'][...][:,:3]
+    else:
+        print('No file given.')
+    return data_dict
+
 def load_FGCubes(file_):
     x = np.load(file_)
     return x['cubes']
