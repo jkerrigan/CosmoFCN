@@ -127,7 +127,7 @@ class FCN21CM():
         data_dict_ = hf.normalize(data_dict) # normalize all data once and first
         data = data_dict_['data']
         labels = data_dict_['labels']
-        redshifts = data_dict_['redshifts']
+        #redshifts = data_dict_['redshifts']
         length = len(labels)
         train_data = np.array(data[:int(length*0.8)])
         train_labels = np.array(labels[:int(length*0.8)])
