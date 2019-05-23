@@ -38,12 +38,14 @@ def load_21cmCubes():
 
 def load_21cmCubes_2(file_ = None):
     if file_:
+        print('Loading dataset from {0} ...'.format(file_))
         with h5py.File(file_) as f:
             data_dict = {}
             data_dict['data'] = f['Data']['t21_snapshots'][...]
             data_dict['labels'] = f['Data']['snapshot_labels'][...][:,:3]
     else:
         print('No file given.')
+    print('Dataset loaded.')
     return data_dict
 
 def load_FGCubes(file_):
