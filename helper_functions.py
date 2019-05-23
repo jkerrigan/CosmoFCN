@@ -43,7 +43,7 @@ def load_21cmCubes_2(file_=None, partial_load=False):
             data_dict = {}
             if partial_load:
                 data_dict['data'] = f['Data']['t21_snapshots'][:partial_load]
-                data_dict['labels'] = f['Data']['snapshot_labels'][:partial_load.:3]
+                data_dict['labels'] = f['Data']['snapshot_labels'][:partial_load,:3]
             else:
                 data_dict['data'] = f['Data']['t21_snapshots'][...]
                 data_dict['labels'] = f['Data']['snapshot_labels'][...][:,:3]
@@ -270,7 +270,7 @@ def plot_cosmo_params(t1_arr,p1_arr,err_arr,param,fname,spec=None):
 #    ax1.errorbar(t1_arr,p1_arr,yerr=err_arr,alpha=0.5,fmt='.',color='black')
     ax1.scatter(t1_arr,p1_arr,c='black',s=s,alpha=0.5)
     ideal = np.linspace(0.8*np.min(t1_arr),1.2*np.max(t1_arr),10)
-    ax1.set_ylim(np.min(p1_arr-err_arr)*0.9,np.max(p1_arr+err_arr)*1.1)
+    ax1.set_ylim(np.min(p1_arr)*0.9,np.max(p1_arr)*1.1)
     ax1.plot(ideal,ideal,'r--')
     ax1.set_xlabel(r'')
     ax1.set_xticklabels([])
