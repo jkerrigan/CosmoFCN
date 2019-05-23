@@ -42,8 +42,8 @@ def load_21cmCubes_2(file_=None, partial_load=False):
         with h5py.File(file_) as f:
             data_dict = {}
             if partial_load:
-                data_dict['data'] = f['Data']['t21_snapshots'][...][:partial_load]
-                data_dict['labels'] = f['Data']['snapshot_labels'][...][:,:3][:partial_load]
+                data_dict['data'] = f['Data']['t21_snapshots'][:partial_load]
+                data_dict['labels'] = f['Data']['snapshot_labels'][:partial_load.:3]
             else:
                 data_dict['data'] = f['Data']['t21_snapshots'][...]
                 data_dict['labels'] = f['Data']['snapshot_labels'][...][:,:3]
