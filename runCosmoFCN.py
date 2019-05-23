@@ -65,7 +65,7 @@ if EKF:
 snr = np.linspace(.01,.01,50)
 
 data_dict_predict = hf.load_21cmCubes_2(os.path.expanduser('~/data/shared/LaPlanteSims/sort_zcut8.0_low.h5'),partial_load=30)
-for i in range(50):
+for i in range(15):
     print('Predicting on sample {0}')
 #    redshifts = data_dict['redshifts']
 #    eor_amp = data_dict['eor_amp']
