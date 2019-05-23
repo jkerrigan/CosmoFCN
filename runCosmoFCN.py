@@ -15,7 +15,7 @@ save = False
 EKF = False
 
 # Load training data
-data_dict_train = load_21cmCubes_2(os.path.expanduser('~/data/shared/LaPlanteSims/sort_zcut8.0_high.h5'))
+data_dict_train = hf.load_21cmCubes_2(os.path.expanduser('~/data/shared/LaPlanteSims/sort_zcut8.0_high.h5'))
 
 # Initialize neural network model
 fcn = FCN21CM(lr=0.003,model_name='RE_v1')
@@ -64,7 +64,7 @@ if EKF:
 
 snr = np.linspace(.01,.01,50)
 
-data_dict_predict = load_21cmCubes_2(os.path.expanduser('~/data/shared/LaPlanteSims/sort_zcut8.0_low.h5'))
+data_dict_predict = hf.load_21cmCubes_2(os.path.expanduser('~/data/shared/LaPlanteSims/sort_zcut8.0_low.h5'))
 for i in range(50):
     print('Predicting on sample {0}')
 #    redshifts = data_dict['redshifts']
