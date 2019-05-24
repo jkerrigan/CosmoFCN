@@ -147,7 +147,7 @@ def scale_sample(data_dict,fgcube=None):
     data_arr = list(map(scale_,combined_cubes,scales))
     new_dict['data'] = data_arr
     new_dict['labels'] = data_dict['labels']
-    new_dict['redshifts'] = data_dict['redshifts']
+    #new_dict['redshifts'] = data_dict['redshifts']
     if fgcube:
         new_dict['foregrounds'] = data_dict['foregrounds']
     return new_dict
