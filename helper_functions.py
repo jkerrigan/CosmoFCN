@@ -154,7 +154,7 @@ def scale_sample(data_dict,fgcube=None):
 
 def normalize(data_dict):
     def standard_(x):
-        return (x - np.mean(x))/np.std(x)#(np.max(x)-np.min(x))
+        return (x - np.mean(x)) #(np.max(x)-np.min(x)) 
     try:
         data_dict['data'] = np.asarray(list(map(standard_,data_dict['data'])))
         #norm_dict['labels'] = data_dict['labels']

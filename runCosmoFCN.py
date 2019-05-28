@@ -15,18 +15,18 @@ save = False
 EKF = False
 
 # Load training data
-data_dict_train = hf.load_21cmCubes_2(os.path.expanduser('~/data/shared/LaPlanteSims/sort_zcut8.0_high.h5'),partial_load=30)
+#data_dict_train = hf.load_21cmCubes_2(os.path.expanduser('~/data/shared/LaPlanteSims/sort_zcut8.0_high.h5'))
 
 # Initialize neural network model
-fcn = FCN21CM(lr=0.003,model_name='RE_v1')
+fcn = FCN21CM(lr=0.003,model_name='RE_mdpt8.0')
 try:
     fcn.load()
 except:
     print('Model load error.')
 # Begin training cycles
-fcn.train(data_dict_train,epochs=100,batch_size=16,scalar_=1e0,fgcube=None)
+#fcn.train(data_dict_train,epochs=10000,batch_size=16,scalar_=1e0,fgcube=None)
 # Save the trained model
-fcn.save()
+#fcn.save()
 
 
 # zmid, delta_z, zmean, alpha, kb
@@ -62,10 +62,11 @@ if EKF:
     ekf_model = EKFCNN(probes,weights)
     ekf_model.run_EKF(scaled_EKF_data)
 
-snr = np.linspace(.01,.01,50)
+data_dict_predict = hf.load_21cmCubes_2(os.path.expanduser('~/data/shared/LaPlanteSims/sort_zcut8.0_low.h5'))
 
-data_dict_predict = hf.load_21cmCubes_2(os.path.expanduser('~/data/shared/LaPlanteSims/sort_zcut8.0_low.h5'),partial_load=30)
-for i in range(15):
+snr = np.linspace(.01,.01,len(data_dict_predict['data']))
+
+for i in range(len(data_dict_predict['data'])):
     print('Predicting on sample {0}')
 #    redshifts = data_dict['redshifts']
 #    eor_amp = data_dict['eor_amp']
