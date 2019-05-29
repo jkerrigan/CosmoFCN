@@ -15,18 +15,18 @@ save = False
 EKF = False
 
 # Load training data
-#data_dict_train = hf.load_21cmCubes_2(os.path.expanduser('~/data/shared/LaPlanteSims/sort_zcut8.0_high.h5'))
+data_dict_train = hf.load_21cmCubes_2(os.path.expanduser('~/data/shared/sort_zcut6.75_high.h5'))
 
 # Initialize neural network model
-fcn = FCN21CM(lr=0.003,model_name='RE_mdpt8.0')
+fcn = FCN21CM(lr=0.003,model_name='RE_mdpt6.75_drop0.5')
 try:
     fcn.load()
 except:
     print('Model load error.')
 # Begin training cycles
-#fcn.train(data_dict_train,epochs=10000,batch_size=16,scalar_=1e0,fgcube=None)
+fcn.train(data_dict_train,epochs=10000,batch_size=32,scalar_=1e0,fgcube=None)
 # Save the trained model
-#fcn.save()
+fcn.save()
 
 
 # zmid, delta_z, zmean, alpha, kb
@@ -52,7 +52,7 @@ p5_arr_err = []
 
 if EKF:
     cov_num = 200
-    rnd_scale = 128#np.random.choice(range(64,256,1))
+    rnd_scale = 128 #np.random.choice(range(64,256,1))
 #    dset_EKF = data_dict['data'][:cov_num]
     dset_EKF = [data_dict['data'][920] for i in range(cov_num)]
     print('EKF dataset size: {}'.format(np.shape(dset_EKF)))
@@ -62,7 +62,7 @@ if EKF:
     ekf_model = EKFCNN(probes,weights)
     ekf_model.run_EKF(scaled_EKF_data)
 
-data_dict_predict = hf.load_21cmCubes_2(os.path.expanduser('~/data/shared/LaPlanteSims/sort_zcut8.0_low.h5'))
+data_dict_predict = hf.load_21cmCubes_2(os.path.expanduser('~/data/shared/sort_zcut6.75_low.h5'))
 
 snr = np.linspace(.01,.01,len(data_dict_predict['data']))
 
@@ -76,7 +76,7 @@ for i in range(len(data_dict_predict['data'])):
     #else:
     combined_cubes = data_dict_predict['data'][i]
     print(np.shape(combined_cubes))
-    rnd_scale = np.random.choice(range(64,256,1))
+    rnd_scale = 500 #np.random.choice(range(64,256,1))
     #noise = np.zeros((512,512,30))#
 
     noise =  snr[i]*np.random.normal(loc=0.,scale=snr[i]*np.std(combined_cubes),size=(512,512,30))#snr[i]*np.std(combined_cubes)*np.random.rand(512,512,30)

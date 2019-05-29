@@ -71,4 +71,4 @@ def transposeCubes(f):
 
 
 if __name__ == '__main__':
-	splitData(z=8.)
+	splitData(z=6.75)
