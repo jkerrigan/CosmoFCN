@@ -14,11 +14,19 @@ import os
 save = False
 EKF = False
 
+
+modelname = 'RE_v2_mdpt12_drop0.3-0.1-0.1'
+
+savedpath = os.getcwd()
+newpath = modelname + '_data'
+os.mkdir(newpath)
+os.chdir(newpath)
+
 # Load training data
-data_dict_train = hf.load_21cmCubes_2(os.path.expanduser('~/data/shared/sort_zcut6.75_high.h5'))
+data_dict_train = hf.load_21cmCubes_2(os.path.expanduser('~/data/shared/v2_sort_mdpt12_low.h5'))
 
 # Initialize neural network model
-fcn = FCN21CM(lr=0.003,model_name='RE_mdpt6.75_drop0.5')
+fcn = FCN21CM(lr=0.003,model_name=modelname)
 try:
     fcn.load()
 except:
@@ -62,7 +70,7 @@ if EKF:
     ekf_model = EKFCNN(probes,weights)
     ekf_model.run_EKF(scaled_EKF_data)
 
-data_dict_predict = hf.load_21cmCubes_2(os.path.expanduser('~/data/shared/sort_zcut6.75_low.h5'))
+data_dict_predict = hf.load_21cmCubes_2(os.path.expanduser('~/data/shared/v2_sort_mdpt12_high.h5'))
 
 snr = np.linspace(.01,.01,len(data_dict_predict['data']))
 
@@ -140,3 +148,5 @@ for i,(p_,f_) in enumerate(zip(pnames,fnames)):
 #        spec = None
     plot_cosmo_params(true_arr[i],predict_arr[i],error_arr[i],p_,f_,spec=spec)
     hf.empirical_error_plots(true_arr[i],predict_arr[i],error_arr[i],p_,f_,spec=spec)
+
+os.chdir(savedpath)

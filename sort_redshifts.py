@@ -9,10 +9,11 @@ input datapath (str) name of hdf5 file to access data from
 Saves a h5 file with data split between data with (mode) below (z) and (mode) above (z)
 '''
 
-def splitData(z=8., mode=0, basedir='/users/jsolt/data/shared/',datapath='/users/jsolt/data/shared/LaPlanteSims/t21_snapshots_downsample_vary_both.hdf5'):
+def splitData(z=6.75, mode=0, basedir='/users/jsolt/data/shared/v2_unfiltered_',datapath='/users/jsolt/data/shared/LaPlanteSims/v2/t21_snapshots.hdf5'):
 	
-	fnameh = basedir + 'sort_zcut{}_high.h5'.format(z)
-	fnamel = basedir + 'sort_zcut{}_low.h5'.format(z)
+	modes = {0: 'mdpt', 1 : 'dur', 2 : 'mnz'}
+	fnameh = basedir + 'sort_{}{}_high.h5'.format(modes[mode],z)
+	fnamel = basedir + 'sort_{}{}_low.h5'.format(modes[mode],z)
 
 	#find data at datapath and copy snapshots, labels into local vars
 	print('Accessing data...')
@@ -31,6 +32,7 @@ def splitData(z=8., mode=0, basedir='/users/jsolt/data/shared/',datapath='/users
 		low['Data']
 	except:
 		low.create_group('Data')
+
 	high['Data'].clear()
 	low['Data'].clear()
 
@@ -71,4 +73,5 @@ def transposeCubes(f):
 
 
 if __name__ == '__main__':
+	splitData(z=12)
 	splitData(z=6.75)
