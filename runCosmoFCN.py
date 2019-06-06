@@ -76,7 +76,7 @@ os.chdir(newpath)
 
 data_dict_predict = hf.load_21cmCubes_2(os.path.expanduser('~/data/shared/v2_sort_mdpt12_low.h5'))
 
-snr = np.linspace(0.0,0.0,len(data_dict_predict['data']))
+snr = np.linspace(0.1,0.1,len(data_dict_predict['data']))
 
 for i in range(len(data_dict_predict['data'])):
     print('Predicting on sample {0}')
