@@ -35,14 +35,14 @@ class FCN21CM():
     
     def FCN(self):
         inputs = Input(shape=self.cube_size)
-        self.s1 = stacked_layer(inputs,ksize=11,fsize=16,psize=4) # 64,64,10,64
+        self.s1 = stacked_layer(inputs,ksize=11,fsize=8,psize=4) # 64,64,10,64
         #s1_ms = Dropout(rate=0.5)(stacked_layer(inputs,ksize=7,fsize=64,psize=4))
         #s1_ls = Dropout(rate=0.5)(stacked_layer(inputs,ksize=3,fsize=64,psize=4))
         #xs1_ = concatenate([s1_ss,s1_ms],axis=-1)
         #s1 = concatenate([s1_,s1_ls],axis=-1)
-        self.s2 = Dropout(rate=0.3)(stacked_layer(self.s1,ksize=7,fsize=32,psize=2)) # 16,16,10,128
-        self.s3 = Dropout(rate=0.1)(stacked_layer(self.s2,ksize=5,fsize=64,psize=2)) # 4,4,5,256 #dropout added here 
-        self.fc1 = Dropout(rate=0.1)(stacked_layer(self.s3,ksize=3,fsize=128,psize=2)) # 1,1,1,2048
+        self.s2 = Dropout(rate=0.6)(stacked_layer(self.s1,ksize=7,fsize=16,psize=2)) # 16,16,10,128
+        self.s3 = Dropout(rate=0)(stacked_layer(self.s2,ksize=5,fsize=32,psize=2)) # 4,4,5,256 #dropout added here 
+        self.fc1 = Dropout(rate=0.6)(stacked_layer(self.s3,ksize=3,fsize=64,psize=2)) # 1,1,1,2048
         self.out = Conv2D(filters=3,kernel_size=3,padding='same')(self.fc1)
         self.max_out = GlobalMaxPooling2D()(self.out)
         
@@ -122,9 +122,9 @@ class FCN21CM():
         else:
             print('No foregrounds included.')
         print('Scaling down cubes...')
-#        data_dict_ = hf.scale_sample(data_dict)
+        data_dict_ = hf.scale_sample(data_dict)
         print('Normalizing scaled data cubes...')
-        data_dict_ = hf.normalize(data_dict) # normalize all data once and first
+        data_dict_ = hf.normalize(data_dict_) # normalize all data once and first
         data = data_dict_['data']
         labels = data_dict_['labels']
         #redshifts = data_dict_['redshifts']

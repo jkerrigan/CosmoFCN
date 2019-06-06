@@ -15,15 +15,11 @@ save = False
 EKF = False
 
 
-modelname = 'RE_v2_mdpt12_drop0.3-0.1-0.1'
+modelname = 'RE_v2_mdpt12_drop0.4-0-0.4_fsizehalf100k'
 
-savedpath = os.getcwd()
-newpath = modelname + '_data'
-os.mkdir(newpath)
-os.chdir(newpath)
 
 # Load training data
-data_dict_train = hf.load_21cmCubes_2(os.path.expanduser('~/data/shared/v2_sort_mdpt12_low.h5'))
+#data_dict_train = hf.load_21cmCubes_2(os.path.expanduser('~/data/shared/v2_sort_mdpt12_low.h5'))
 
 # Initialize neural network model
 fcn = FCN21CM(lr=0.003,model_name=modelname)
@@ -32,9 +28,10 @@ try:
 except:
     print('Model load error.')
 # Begin training cycles
-fcn.train(data_dict_train,epochs=10000,batch_size=32,scalar_=1e0,fgcube=None)
+#fcn.train(data_dict_train,epochs=100000,batch_size=32,scalar_=1e0,fgcube=None)
 # Save the trained model
-fcn.save()
+#fcn.save()
+
 
 
 # zmid, delta_z, zmean, alpha, kb
@@ -70,9 +67,16 @@ if EKF:
     ekf_model = EKFCNN(probes,weights)
     ekf_model.run_EKF(scaled_EKF_data)
 
-data_dict_predict = hf.load_21cmCubes_2(os.path.expanduser('~/data/shared/v2_sort_mdpt12_high.h5'))
 
-snr = np.linspace(.01,.01,len(data_dict_predict['data']))
+savedpath = os.getcwd()
+newpath = modelname + 'TEST_data'
+if not os.path.isdir(newpath):
+	os.mkdir(newpath)
+os.chdir(newpath)
+
+data_dict_predict = hf.load_21cmCubes_2(os.path.expanduser('~/data/shared/v2_sort_mdpt12_low.h5'))
+
+snr = np.linspace(0.0,0.0,len(data_dict_predict['data']))
 
 for i in range(len(data_dict_predict['data'])):
     print('Predicting on sample {0}')
