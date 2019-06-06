@@ -15,7 +15,7 @@ save = False
 EKF = False
 
 
-modelname = 'RE_v2_mdpt12_drop0.4-0-0.4_fsizehalf100k'
+modelname = 'RE_v2_mdpt12_drop0.6-0-0.6_fsizehalf'
 
 
 # Load training data
@@ -30,6 +30,7 @@ except:
 # Begin training cycles
 #fcn.train(data_dict_train,epochs=100000,batch_size=32,scalar_=1e0,fgcube=None)
 # Save the trained model
+summary = fcn.summary()
 #fcn.save()
 
 
@@ -88,7 +89,7 @@ for i in range(len(data_dict_predict['data'])):
     #else:
     combined_cubes = data_dict_predict['data'][i]
     print(np.shape(combined_cubes))
-    rnd_scale = 500 #np.random.choice(range(64,256,1))
+    rnd_scale = 256 #np.random.choice(range(64,256,1))
     #noise = np.zeros((512,512,30))#
 
     noise =  snr[i]*np.random.normal(loc=0.,scale=snr[i]*np.std(combined_cubes),size=(512,512,30))#snr[i]*np.std(combined_cubes)*np.random.rand(512,512,30)
@@ -152,5 +153,9 @@ for i,(p_,f_) in enumerate(zip(pnames,fnames)):
 #        spec = None
     plot_cosmo_params(true_arr[i],predict_arr[i],error_arr[i],p_,f_,spec=spec)
     hf.empirical_error_plots(true_arr[i],predict_arr[i],error_arr[i],p_,f_,spec=spec)
+
+f = open(modelname + '_info.txt',"w+")
+f.write(summary)
+f.close()
 
 os.chdir(savedpath)
