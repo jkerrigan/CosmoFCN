@@ -2,30 +2,34 @@ from model import FCN21CM
 from helper_functions import load_21cmCubes,plot_cosmo_params
 import helper_functions as hf
 import matplotlib
+import tensorflow as tf
 matplotlib.use('AGG')
 import numpy as np
 import pylab as pl
 import sys
 from EKF import EKFCNN
 from tensorflow.python.client import device_lib
+import os
 print(device_lib.list_local_devices())
 
+os.environ["CUDA_VISIBLE_DEVICES"] = "0,1,2,3"
+config = tf.ConfigProto()
+config.gpu_options.allow_growth = True
 save = False
-EKF = True
+EKF = False
 # Load data
 
 data_dict = load_21cmCubes()
 #data = data_dict['data']
 #labels = data_dict['labels']
 
-fcn = FCN21CM(lr=0.003,model_name='ProofOfConcept_Standard')
+fcn = FCN21CM(lr=0.003,model_name='3DConvModel')
 try:
     fcn.load()
 except:
     print('Model load error.')
-#fcn.train(data_dict,epochs=100000,batch_size=16,scalar_=1e0,fgcube=None)
-#fcn.save()
-
+fcn.train(data_dict,epochs=20,batch_size=16,scalar_=1e0,fgcube=None)
+fcn.save()
 
 # zmid, delta_z, zmean, alpha, kb
 p1_arr = []
@@ -60,8 +64,8 @@ if EKF:
     ekf_model = EKFCNN(probes,weights)
     ekf_model.run_EKF(scaled_EKF_data)
 
-snr = np.linspace(.01,.01,50)
-for i in range(50):
+snr = np.linspace(.0,.0,200)
+for i in range(200):
     print('Predicting on sample {0}')
     redshifts = data_dict['redshifts']
     eor_amp = data_dict['eor_amp']
@@ -69,21 +73,21 @@ for i in range(50):
     #    fgs = build_fg_z_cube(redshifts,eor_amp,scalar)
     #    combined_cubes = np.add(data_dict['data'][-i],fgs)
     #else:
-    combined_cubes = data_dict['data'][910]#-np.mod(i,200)]
+    combined_cubes = data_dict['data'][-np.mod(i,200)]
     print(np.shape(combined_cubes))
-    rnd_scale = np.random.choice(range(64,256,1))
+    rnd_scale = 128#np.random.choice(range(64,500,1))
     #noise = np.zeros((512,512,30))#
 
     noise =  snr[i]*np.random.normal(loc=0.,scale=snr[i]*np.std(combined_cubes),size=(512,512,30))#snr[i]*np.std(combined_cubes)*np.random.rand(512,512,30)
     print('Data std: {}'.format(np.std(combined_cubes)))
     print('Noise std: {}'.format(np.std(noise)))
     #data_sample = np.expand_dims(combined_cubes,axis=0)
-    data_sample = hf.scale_(hf.normalize(combined_cubes + noise),rnd_scale).reshape(1,rnd_scale,rnd_scale,30)
-    label_sample = data_dict['labels'][910]#-np.mod(i,200)]
+    data_sample = hf.scale_(hf.normalize(combined_cubes + noise),rnd_scale).reshape(1,rnd_scale,rnd_scale,30,1)
+    label_sample = data_dict['labels'][-np.mod(i,200)]
     print('scaled sample shape',np.shape(data_sample))
     predict = fcn.fcn_model.predict(data_sample)[0]
 
-    predict_err = ekf_model.pred_uncertainty(data_sample)
+#    predict_err = ekf_model.pred_uncertainty(data_sample)
     print('Predicted Midpoint {0} Duration {1} Mean Z {2}'.format(*predict))
     p1_arr.append(predict[0])
     p2_arr.append(predict[1])
@@ -98,19 +102,19 @@ for i in range(50):
 #    t4_arr.append(label_sample[3])
 #    t5_arr.append(label_sample[4])
     print('Names: {}'.format(['midpoint','duration','meanz','alpha','k0']))
-    print('Predicted Error: {}'.format(predict_err))
-    p1_arr_err.append(predict_err[0])
-    p2_arr_err.append(predict_err[1])
-    p3_arr_err.append(predict_err[2])
+#    print('Predicted Error: {}'.format(predict_err))
+#    p1_arr_err.append(predict_err[0])
+#    p2_arr_err.append(predict_err[1])
+#    p3_arr_err.append(predict_err[2])
 #    p4_arr_err.append(predict_err[3])
 #    p5_arr_err.append(predict_err[4])
 
-pl.figure()
-pl.plot(snr,p1_arr_err,label='Midpoint')
-pl.plot(snr,p2_arr_err,label='Duration')
-pl.plot(snr,p3_arr_err,label='Mean Z')
-pl.legend()
-pl.savefig('SNRvsUncertainty.pdf',dpi=300)
+#pl.figure()
+#pl.plot(snr,p1_arr_err,label='Midpoint')
+#pl.plot(snr,p2_arr_err,label='Duration')
+#pl.plot(snr,p3_arr_err,label='Mean Z')
+#pl.legend()
+#pl.savefig('SNRvsUncertainty.pdf',dpi=300)
 
 pl.figure()
 pl.plot(np.array(ssize)*2000./512.,np.abs(np.array(t2_arr)-np.array(p2_arr)),'.')
@@ -120,7 +124,8 @@ pl.savefig('ErrorVsSize.pdf',dpi=300)
     
 predict_arr = [p1_arr,p2_arr,p3_arr]#,p4_arr,p5_arr]
 true_arr = [t1_arr,t2_arr,t3_arr]#,t4_arr,t5_arr]
-error_arr = [p1_arr_err,p2_arr_err,p3_arr_err]#,p4_arr_err,p5_arr_err]
+#error_arr = [p1_arr_err,p2_arr_err,p3_arr_err]#,p4_arr_err,p5_arr_err]
+error_arr = [np.zeros_like(p1_arr),np.zeros_like(p2_arr),np.zeros_like(p3_arr)]
 pnames = ['$z_{50\%}$','$\Delta z$','$\overline{z}$']#,'alpha','$k_{0}$']
 fnames = ['midpoint','duration','meanz']#,'alpha','k0']
 
@@ -134,4 +139,4 @@ for i,(p_,f_) in enumerate(zip(pnames,fnames)):
 #    else:
 #        spec = None
     plot_cosmo_params(true_arr[i],predict_arr[i],error_arr[i],p_,f_,spec=spec)
-    hf.empirical_error_plots(true_arr[i],predict_arr[i],error_arr[i],p_,f_,spec=spec)
+#    hf.empirical_error_plots(true_arr[i],predict_arr[i],error_arr[i],p_,f_,spec=spec)
