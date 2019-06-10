@@ -18,13 +18,13 @@ data_dict = load_21cmCubes()
 #data = data_dict['data']
 #labels = data_dict['labels']
 
-fcn = FCN21CM(lr=0.003,model_name='ProofOfConcept_Standard')
+fcn = FCN21CM(lr=0.003,model_name='TrainRegimen2.0')
 try:
     fcn.load()
 except:
     print('Model load error.')
-#fcn.train(data_dict,epochs=100000,batch_size=16,scalar_=1e0,fgcube=None)
-#fcn.save()
+fcn.train(data_dict,epochs=60,batch_size=10,scalar_=1e0,fgcube=None)
+fcn.save()
 
 
 # zmid, delta_z, zmean, alpha, kb
@@ -51,8 +51,8 @@ p5_arr_err = []
 if EKF:
     cov_num = 200
     rnd_scale = 128#np.random.choice(range(64,256,1))
-#    dset_EKF = data_dict['data'][:cov_num]
-    dset_EKF = [data_dict['data'][920] for i in range(cov_num)]
+    dset_EKF = data_dict['data'][:cov_num]
+#    dset_EKF = [data_dict['data'][920] for i in range(cov_num)]
     print('EKF dataset size: {}'.format(np.shape(dset_EKF)))
     scaled_EKF_data = np.asarray(list(map(hf.scale_,list(map(hf.normalize,dset_EKF)),cov_num*[rnd_scale]))).reshape(cov_num,rnd_scale,rnd_scale,30)
     print('Scaled EKF data',np.shape(scaled_EKF_data))
@@ -60,8 +60,8 @@ if EKF:
     ekf_model = EKFCNN(probes,weights)
     ekf_model.run_EKF(scaled_EKF_data)
 
-snr = np.linspace(.01,.01,50)
-for i in range(50):
+snr = np.linspace(.00,.00,100)
+for i in range(100):
     print('Predicting on sample {0}')
     redshifts = data_dict['redshifts']
     eor_amp = data_dict['eor_amp']
@@ -69,9 +69,9 @@ for i in range(50):
     #    fgs = build_fg_z_cube(redshifts,eor_amp,scalar)
     #    combined_cubes = np.add(data_dict['data'][-i],fgs)
     #else:
-    combined_cubes = data_dict['data'][910]#-np.mod(i,200)]
+    combined_cubes = data_dict['data'][-np.mod(i,200)]
     print(np.shape(combined_cubes))
-    rnd_scale = np.random.choice(range(64,256,1))
+    rnd_scale = 256#np.random.choice(range(64,256,1))
     #noise = np.zeros((512,512,30))#
 
     noise =  snr[i]*np.random.normal(loc=0.,scale=snr[i]*np.std(combined_cubes),size=(512,512,30))#snr[i]*np.std(combined_cubes)*np.random.rand(512,512,30)
@@ -79,7 +79,7 @@ for i in range(50):
     print('Noise std: {}'.format(np.std(noise)))
     #data_sample = np.expand_dims(combined_cubes,axis=0)
     data_sample = hf.scale_(hf.normalize(combined_cubes + noise),rnd_scale).reshape(1,rnd_scale,rnd_scale,30)
-    label_sample = data_dict['labels'][910]#-np.mod(i,200)]
+    label_sample = data_dict['labels'][-np.mod(i,200)]
     print('scaled sample shape',np.shape(data_sample))
     predict = fcn.fcn_model.predict(data_sample)[0]
 
