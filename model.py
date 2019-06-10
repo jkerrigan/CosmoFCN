@@ -144,7 +144,7 @@ class FCN21CM():
             #rnd_ind_t = np.random.choice(range(len(train_labels)),size=batch_size)
             rnd_ind_v = np.random.choice(range(len(val_labels)),size=batch_size)
             epoch_inds_t = np.random.permutation(epoch_inds_t)
-            for i in range(len(train_labels)/batch_size):
+            for i in range(int(len(train_labels)/batch_size)):
                 rnd_ind_v = np.random.choice(range(len(val_labels)),size=batch_size)
                 #train_scale = train_data[rnd_ind_t]
                 #val_scale = val_data[rnd_ind_v]
