@@ -15,11 +15,13 @@ save = False
 EKF = False
 
 
-modelname = 'RE_v2_mdpt12_drop0.6-0-0.6_fsizehalf'
+modelname = 'RE_mdpt12_drop0.6-0-0.6_fsizehalf_2'
+training = '~/data/shared/sort_zcut12_low.h5'
+predicting = training
 
 
 # Load training data
-#data_dict_train = hf.load_21cmCubes_2(os.path.expanduser('~/data/shared/v2_sort_mdpt12_low.h5'))
+data_dict_train = hf.load_21cmCubes_2(os.path.expanduser(training))
 
 # Initialize neural network model
 fcn = FCN21CM(lr=0.003,model_name=modelname)
@@ -28,10 +30,9 @@ try:
 except:
     print('Model load error.')
 # Begin training cycles
-#fcn.train(data_dict_train,epochs=100000,batch_size=32,scalar_=1e0,fgcube=None)
+fcn.train(data_dict_train,epochs=10000,batch_size=32,scalar_=1e0,fgcube=None)
 # Save the trained model
-summary = fcn.summary()
-#fcn.save()
+fcn.save()
 
 
 
@@ -75,7 +76,7 @@ if not os.path.isdir(newpath):
 	os.mkdir(newpath)
 os.chdir(newpath)
 
-data_dict_predict = hf.load_21cmCubes_2(os.path.expanduser('~/data/shared/v2_sort_mdpt12_low.h5'))
+data_dict_predict = hf.load_21cmCubes_2(os.path.expanduser(predicting))
 
 snr = np.linspace(0.1,0.1,len(data_dict_predict['data']))
 
@@ -154,8 +155,11 @@ for i,(p_,f_) in enumerate(zip(pnames,fnames)):
     plot_cosmo_params(true_arr[i],predict_arr[i],error_arr[i],p_,f_,spec=spec)
     hf.empirical_error_plots(true_arr[i],predict_arr[i],error_arr[i],p_,f_,spec=spec)
 
-f = open(modelname + '_info.txt',"w+")
-f.write(summary)
-f.close()
+with open('modelsummary.txt','a') as f:
+    f.write('Model file name:' + modelname + '\n')
+    f.write('Training data:' + training + '\n')
+    f.write('Predicting on:' + predicting + '\n')
+
+fcn.writesummary() #make sure filename in model.py matches filename in lines above
 
 os.chdir(savedpath)
