@@ -71,7 +71,7 @@ for i in range(500):
     #else:
     combined_cubes = data_dict['data'][-np.mod(i,200)]
     print(np.shape(combined_cubes))
-    rnd_scale = 256#np.random.choice(range(64,256,1))
+    rnd_scale = 64#np.random.choice(range(64,256,1))
     #noise = np.zeros((512,512,30))#
 
     noise =  snr[i]*np.random.normal(loc=0.,scale=snr[i]*np.std(combined_cubes),size=(512,512,30))#snr[i]*np.std(combined_cubes)*np.random.rand(512,512,30)
