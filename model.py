@@ -122,9 +122,9 @@ class FCN21CM():
         else:
             print('No foregrounds included.')
         print('Scaling down cubes...')
-        data_dict_ = hf.scale_sample(data_dict)
+        #data_dict_ = hf.scale_sample(data_dict)
         print('Normalizing scaled data cubes...')
-        data_dict_ = hf.normalize(data_dict_) # normalize all data once and first
+        data_dict_ = hf.normalize(data_dict) # normalize all data once and first
         data = data_dict_['data']
         labels = data_dict_['labels']
         #redshifts = data_dict_['redshifts']
@@ -167,9 +167,10 @@ class FCN21CM():
             del(train_data)
             del(val_data)
             #print('Rescaling down new cubes...')
-            data_dict_ = hf.scale_sample(data_dict)
+            data_dict_ = hf.normalize(data_dict)
+            data_dict_ = hf.scale_sample(data_dict_)
             #print('Normalizing new scaled data cubes...')
-            data_dict_ = hf.normalize(data_dict_)
+            #data_dict_ = hf.normalize(data_dict_)
             data = np.copy(data_dict_['data'])
             del(data_dict_)
             train_data = np.array(data[:int(length*0.8)])
