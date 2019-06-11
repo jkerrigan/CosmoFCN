@@ -40,10 +40,10 @@ class FCN21CM():
         #s1_ls = Dropout(rate=0.5)(stacked_layer(inputs,ksize=3,fsize=64,psize=4))
         #xs1_ = concatenate([s1_ss,s1_ms],axis=-1)
         #s1 = concatenate([s1_,s1_ls],axis=-1)
-        self.s2 = Dropout(rate=0.0)(stacked_layer(self.s1,ksize=3,fsize=128,psize=2)) # 16,16,10,128
-        self.s3 = Dropout(rate=0.0)(stacked_layer(self.s2,ksize=3,fsize=256,psize=2)) # 4,4,5,256 #dropout added here 
-        self.fc1 = Dropout(rate=0.0)(stacked_layer(self.s3,ksize=3,fsize=512,psize=2)) # 1,1,1,2048
-        self.out = Dropout(rate=0.0)(Conv2D(filters=3,kernel_size=3,padding='same')(self.fc1))
+        self.s2 = Dropout(rate=0.3)(stacked_layer(self.s1,ksize=3,fsize=128,psize=2)) # 16,16,10,128
+        self.s3 = Dropout(rate=0.3)(stacked_layer(self.s2,ksize=3,fsize=256,psize=2)) # 4,4,5,256 #dropout added here 
+        self.fc1 = Dropout(rate=0.3)(stacked_layer(self.s3,ksize=3,fsize=512,psize=2)) # 1,1,1,2048
+        self.out = Dropout(rate=0.3)(Conv2D(filters=3,kernel_size=3,padding='same')(self.fc1))
         self.max_out = GlobalMaxPooling2D()(self.out)
         
         model = Model(inputs=inputs,outputs=self.max_out)
