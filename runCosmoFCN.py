@@ -10,12 +10,13 @@ from EKF import EKFCNN
 from tensorflow.python.client import device_lib
 print(device_lib.list_local_devices())
 import os
+import datetime
 
 save = False
 EKF = False
 
 
-modelname = 'RE_mdpt12_drop0.6-0-0.6_fsizehalf_2'
+modelname = 'RE_m2_v1_drop0.3-0.3-0.3-0.3'
 training = '~/data/shared/sort_zcut12_low.h5'
 predicting = training
 
@@ -30,7 +31,7 @@ try:
 except:
     print('Model load error.')
 # Begin training cycles
-fcn.train(data_dict_train,epochs=10000,batch_size=32,scalar_=1e0,fgcube=None)
+fcn.train(data_dict_train,epochs=1000,batch_size=24,scalar_=1e0,fgcube=None)
 # Save the trained model
 fcn.save()
 
@@ -155,10 +156,12 @@ for i,(p_,f_) in enumerate(zip(pnames,fnames)):
     plot_cosmo_params(true_arr[i],predict_arr[i],error_arr[i],p_,f_,spec=spec)
     hf.empirical_error_plots(true_arr[i],predict_arr[i],error_arr[i],p_,f_,spec=spec)
 
-with open('modelsummary.txt','a') as f:
+with open('modelsummary.txt','w') as f:
+    f.write(str(datetime.datetime.today())+'\n\n')
     f.write('Model file name:' + modelname + '\n')
     f.write('Training data:' + training + '\n')
-    f.write('Predicting on:' + predicting + '\n')
+    f.write('Predicting on:' + predicting + '\n\n')
+    f.write('Model Summary: \n')
 
 fcn.writesummary() #make sure filename in model.py matches filename in lines above
 
