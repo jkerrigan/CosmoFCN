@@ -193,12 +193,9 @@ class FCN21CM():
         self.fcn_model.load_weights(self.model_name+'.h5')
         print('Model loaded.')
 
-    def myprint(self, s):
-        with open('modelsummary.txt','a') as f:
-            print(s, file=f)
-
-    def writesummary(self):
-        fcn_model.summary(print_fn=myprint)
+    def writesummary(self, filename='modelsummary.txt'):
+        with open(filename,'a') as fh:
+            self.fcn_model.summary(print_fn=lambda x: fh.write(x + '\n'))
 
 def plot_loss(model_name,iters,train_loss,val_loss):
     pl.plot(iters,np.log10(train_loss),label='Training loss')
