@@ -23,8 +23,8 @@ try:
     fcn.load()
 except:
     print('Model load error.')
-fcn.train(data_dict,epochs=60,batch_size=10,scalar_=1e0,fgcube=None)
-fcn.save()
+#fcn.train(data_dict,epochs=1000,batch_size=20,scalar_=1e0,fgcube=None)
+#fcn.save()
 
 
 # zmid, delta_z, zmean, alpha, kb
@@ -60,8 +60,8 @@ if EKF:
     ekf_model = EKFCNN(probes,weights)
     ekf_model.run_EKF(scaled_EKF_data)
 
-snr = np.linspace(.00,.00,100)
-for i in range(100):
+snr = np.linspace(.01,.01,500)
+for i in range(500):
     print('Predicting on sample {0}')
     redshifts = data_dict['redshifts']
     eor_amp = data_dict['eor_amp']
