@@ -35,15 +35,15 @@ class FCN21CM():
     
     def FCN(self):
         inputs = Input(shape=self.cube_size)
-        self.s1 = stacked_layer(inputs,ksize=11,fsize=8,psize=4) # 64,64,10,64
+        self.s1 = stacked_layer(inputs,ksize=3,fsize=64,psize=4) # 64,64,10,64
         #s1_ms = Dropout(rate=0.5)(stacked_layer(inputs,ksize=7,fsize=64,psize=4))
         #s1_ls = Dropout(rate=0.5)(stacked_layer(inputs,ksize=3,fsize=64,psize=4))
         #xs1_ = concatenate([s1_ss,s1_ms],axis=-1)
         #s1 = concatenate([s1_,s1_ls],axis=-1)
-        self.s2 = Dropout(rate=0.6)(stacked_layer(self.s1,ksize=7,fsize=16,psize=2)) # 16,16,10,128
-        self.s3 = Dropout(rate=0)(stacked_layer(self.s2,ksize=5,fsize=32,psize=2)) # 4,4,5,256 #dropout added here 
-        self.fc1 = Dropout(rate=0.6)(stacked_layer(self.s3,ksize=3,fsize=64,psize=2)) # 1,1,1,2048
-        self.out = Conv2D(filters=3,kernel_size=3,padding='same')(self.fc1)
+        self.s2 = Dropout(rate=0.0)(stacked_layer(self.s1,ksize=3,fsize=128,psize=2)) # 16,16,10,128
+        self.s3 = Dropout(rate=0.0)(stacked_layer(self.s2,ksize=3,fsize=256,psize=2)) # 4,4,5,256 #dropout added here 
+        self.fc1 = Dropout(rate=0.0)(stacked_layer(self.s3,ksize=3,fsize=512,psize=2)) # 1,1,1,2048
+        self.out = Dropout(rate=0.0)(Conv2D(filters=3,kernel_size=3,padding='same')(self.fc1))
         self.max_out = GlobalMaxPooling2D()(self.out)
         
         model = Model(inputs=inputs,outputs=self.max_out)
@@ -164,16 +164,16 @@ class FCN21CM():
             epoch_loss_t.append(np.mean(loss_arr_t))
             epoch_loss_v.append(np.mean(loss_arr_v))
             #if e % 100==0 and e!=0:
-            #    del(train_data)
-            #    del(val_data)
-            #    print('Rescaling down new cubes...')
-            #    data_dict_ = hf.scale_sample(data_dict)
-            #    print('Normalizing new scaled data cubes...')
-            #    data_dict_ = hf.normalize(data_dict_)
-            #    data = np.copy(data_dict_['data'])
-            #    del(data_dict_)
-            #    train_data = np.array(data[:int(length*0.8)])
-            #    val_data = np.array(data[int(length*0.8):])
+            del(train_data)
+            del(val_data)
+            #print('Rescaling down new cubes...')
+            data_dict_ = hf.scale_sample(data_dict)
+            #print('Normalizing new scaled data cubes...')
+            data_dict_ = hf.normalize(data_dict_)
+            data = np.copy(data_dict_['data'])
+            del(data_dict_)
+            train_data = np.array(data[:int(length*0.8)])
+            val_data = np.array(data[int(length*0.8):])
         plot_loss(self.model_name,range(epochs),epoch_loss_t,epoch_loss_v)
         return self.fcn_model
 

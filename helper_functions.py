@@ -126,7 +126,7 @@ def scale_sample(data_dict,fgcube=None):
     # dataset comes in sizes of 512x512x30 (2Gpc,2Gpc,30 z slices)
     # we want to subsample this space to sizes < 1Gpc
     new_dict = {}
-    scale = 256 #np.random.choice(range(64,256,30)) #32 minimum because of pooling operations (min 62.5 Gpc)
+    scale = np.random.choice(range(64,256,30)) #32 minimum because of pooling operations (min 62.5 Gpc)
     print('Sampled to the scale of {} Mpc'.format(2000.*scale/512.))
     print('Length of data {}'.format(len(data_dict['data'])))
     print('Scale {}'.format(scale))
