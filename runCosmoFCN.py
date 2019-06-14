@@ -5,6 +5,7 @@ import matplotlib
 matplotlib.use('AGG')
 import numpy as np
 import pylab as pl
+from time import time
 import sys
 from EKF import EKFCNN
 from tensorflow.python.client import device_lib
@@ -48,10 +49,21 @@ p3_arr_err = []
 p4_arr_err = []
 p5_arr_err = []
 
+#print('Running test...')
+#t0 = time()
+#hf.tf_scale(data_dict)
+#print('Tensorflow implementation time: ',time() - t0)
+
+t0 = time()
+hf.scale_sample(data_dict)
+print('Numpy implementation time: ',time() - t0)
+
+
 if EKF:
     cov_num = 200
-    rnd_scale = 128#np.random.choice(range(64,256,1))
-    dset_EKF = data_dict['data'][:cov_num]
+    rnd_scale = 64#np.random.choice(range(64,256,1))
+    noise =  2.*np.random.normal(loc=0.,scale=2.*np.std(data_dict['data'][0]),size=(cov_num,512,512,30))
+    dset_EKF = data_dict['data'][:cov_num] + noise
 #    dset_EKF = [data_dict['data'][920] for i in range(cov_num)]
     print('EKF dataset size: {}'.format(np.shape(dset_EKF)))
     scaled_EKF_data = np.asarray(list(map(hf.scale_,list(map(hf.normalize,dset_EKF)),cov_num*[rnd_scale]))).reshape(cov_num,rnd_scale,rnd_scale,30)
@@ -60,7 +72,7 @@ if EKF:
     ekf_model = EKFCNN(probes,weights)
     ekf_model.run_EKF(scaled_EKF_data)
 
-snr = np.linspace(.01,.01,500)
+snr = np.linspace(2.,2.,500)
 for i in range(500):
     print('Predicting on sample {0}')
     redshifts = data_dict['redshifts']
@@ -69,7 +81,7 @@ for i in range(500):
     #    fgs = build_fg_z_cube(redshifts,eor_amp,scalar)
     #    combined_cubes = np.add(data_dict['data'][-i],fgs)
     #else:
-    combined_cubes = data_dict['data'][-np.mod(i,200)]
+    combined_cubes = data_dict['data'][920]#-np.mod(i,200)]
     print(np.shape(combined_cubes))
     rnd_scale = 64#np.random.choice(range(64,256,1))
     #noise = np.zeros((512,512,30))#

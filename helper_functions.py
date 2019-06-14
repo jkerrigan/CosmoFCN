@@ -12,6 +12,7 @@ rc('text',usetex=True)
 pl.rcParams.update({'font.size':18})
 import socket
 import os
+import tensorflow as tf
 
 def load_21cmCubes():
     # Cubes are in shape 512*512*30
@@ -110,13 +111,13 @@ def scale_sample(data_dict,fgcube=None):
     # dataset comes in sizes of 512x512x30 (2Gpc,2Gpc,30 z slices)
     # we want to subsample this space to sizes < 1Gpc
     new_dict = {}
-    scale = np.random.choice(range(64,256,30)) #32 minimum because of pooling operations (min 62.5 Gpc)
+    scale = 256#np.random.choice(range(64,256,30)) #32 minimum because of pooling operations (min 62.5 Gpc)
     print('Sampled to the scale of {} Mpc'.format(2000.*scale/512.))
     print('Length of data {}'.format(len(data_dict['data'])))
     print('Scale {}'.format(scale))
     dataset_size = np.shape(data_dict['data'])[0]
     if fgcube:
-        if np.random.rand() > .0:
+        if False:#np.random.rand() > .0:
             rnd_fgs = np.random.choice(range(len(data_dict['foregrounds'])),size=len(data_dict['data']))
             fgs_realize = list(map(random_perm,np.array(data_dict['foregrounds'])[rnd_fgs]))
             print('FG Realizations {}'.format(len(fgs_realize)))
@@ -124,17 +125,44 @@ def scale_sample(data_dict,fgcube=None):
         else:
             combined_cubes = data_dict['data']
     else:
-        combined_cubes = data_dict['data']
-    scales = len(data_dict['data'])*[scale]
+        combined_cubes = np.copy(data_dict['data'])
+        #del(data_dict['data'])
+    scales = len(combined_cubes)*[scale]
     print('.............')
     print('Combined cube size {}'.format(np.shape(combined_cubes)))
     data_arr = list(map(scale_,combined_cubes,scales))
-    new_dict['data'] = data_arr
+    new_dict['data'] = np.copy(data_arr)
+    del(data_arr)
     new_dict['labels'] = data_dict['labels']
     new_dict['redshifts'] = data_dict['redshifts']
     if fgcube:
         new_dict['foregrounds'] = data_dict['foregrounds']
     return new_dict
+
+def tf_scale(data_dict):
+    def resize(data,size):
+        s_x = np.random.choice(range(512-size))
+        s_y = np.random.choice(range(512-size))
+        return data[s_x:size+s_x,s_y:s_y+size,:]
+    size = 256
+    sess = tf.Session()
+    data = np.copy(data_dict['data'])
+    X_pholder = tf.placeholder(dtype=tf.float32,shape=np.shape(data))
+    d = tf.get_variable('X',np.shape(data))
+    #X = tf.constant(np.copy(data_dict['data']))
+    with sess.as_default():
+        #try:
+        sess.run(tf.global_variables_initializer())
+        sess.run(d.assign(X_pholder), {X_pholder: data})
+        z = sess.run(tf.map_fn(lambda a : resize(a,size),data,dtype=tf.float32)).eval()
+        #except:
+        #    z = resize(data,size).eval()
+    #try:
+        data_dict['data'] = z
+    #except:
+    #    data_dict = z
+    return data_dict
+        
 
 def normalize(data_dict):
     def standard_(x):
