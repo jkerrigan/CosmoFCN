@@ -10,22 +10,32 @@ import sys
 from EKF import EKFCNN
 from tensorflow.python.client import device_lib
 print(device_lib.list_local_devices())
+import os
 
 save = False
 EKF = True
 # Load data
 
-data_dict = load_21cmCubes()
+modelname = 'model'
+training='~/data/shared/sort_dur0.6_high.h5'
+predicting = training
+
+savedpath = os.getcwd()
+if not os.path.isdir(modelname):
+	os.mkdir(modelname)
+os.chdir(modelname)
+
+data_dict = load_21cmCubes_2(_file=os.path.expanduser(training))
 #data = data_dict['data']
 #labels = data_dict['labels']
 
-fcn = FCN21CM(lr=0.003,model_name='TrainRegimen2.0')
+fcn = FCN21CM(lr=0.003,model_name=modelname)
 try:
     fcn.load()
 except:
     print('Model load error.')
-#fcn.train(data_dict,epochs=1000,batch_size=20,scalar_=1e0,fgcube=None)
-#fcn.save()
+fcn.train(data_dict,epochs=1000,batch_size=20,scalar_=1e0,fgcube=None)
+fcn.save()
 
 
 # zmid, delta_z, zmean, alpha, kb
@@ -72,16 +82,26 @@ if EKF:
     ekf_model = EKFCNN(probes,weights)
     ekf_model.run_EKF(scaled_EKF_data)
 
+
+
+newpath = modelname + '_data'
+if not os.path.isdir(newpath):
+	os.mkdir(newpath)
+os.chdir(newpath)
+
+data_dict_predict = hf.load_21cmCubes_2(os.path.expanduser(predicting))
+
+
 snr = np.linspace(0.,0.,500)
 for i in range(500):
     print('Predicting on sample {0}')
-    redshifts = data_dict['redshifts']
-    eor_amp = data_dict['eor_amp']
+    redshifts = data_dict_predict['redshifts']
+    eor_amp = data_dict_predict['eor_amp']
     #if False:#np.random.rand()>1.1:
     #    fgs = build_fg_z_cube(redshifts,eor_amp,scalar)
     #    combined_cubes = np.add(data_dict['data'][-i],fgs)
     #else:
-    combined_cubes = data_dict['data'][920]#-np.mod(i,200)]
+    combined_cubes = data_dict_predict['data'][920]#-np.mod(i,200)]
     print(np.shape(combined_cubes))
     rnd_scale = 256#np.random.choice(range(64,256,1))
     #noise = np.zeros((512,512,30))#
@@ -91,7 +111,7 @@ for i in range(500):
     print('Noise std: {}'.format(np.std(noise)))
     #data_sample = np.expand_dims(combined_cubes,axis=0)
     data_sample = hf.scale_(hf.normalize(combined_cubes + noise),rnd_scale).reshape(1,rnd_scale,rnd_scale,30)
-    label_sample = data_dict['labels'][920]#-np.mod(i,200)]
+    label_sample = data_dict_predict['labels'][920]#-np.mod(i,200)]
     print('scaled sample shape',np.shape(data_sample))
     predict = fcn.fcn_model.predict(data_sample)[0]
 
@@ -147,3 +167,5 @@ for i,(p_,f_) in enumerate(zip(pnames,fnames)):
 #        spec = None
     plot_cosmo_params(true_arr[i],predict_arr[i],error_arr[i],p_,f_,spec=spec)
     hf.empirical_error_plots(true_arr[i],predict_arr[i],error_arr[i],p_,f_,spec=spec)
+
+os.chdir(savedpath)
