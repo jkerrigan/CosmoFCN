@@ -202,7 +202,7 @@ def get_QCNN(x):
     except:
         Q_quad = np.array(Q_(x))
     Q_quad_mask = np.ma.array(Q_quad,mask=Q_quad<=0.)
-    Q_quad = np.ma.median(Q_quad_mask,axis=0)
+    Q_quad = np.ma.mean(Q_quad_mask,axis=0)
 #    x_sh = np.shape(x)
 #    print('x shape',np.shape(x))
 #    Q = np.zeros((x_sh[-1],x_sh[-1]))

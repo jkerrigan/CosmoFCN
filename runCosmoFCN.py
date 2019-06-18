@@ -63,7 +63,7 @@ if EKF:
     cov_num = 200
     rnd_scale = 64#np.random.choice(range(64,256,1))
     noise =  2.*np.random.normal(loc=0.,scale=2.*np.std(data_dict['data'][0]),size=(cov_num,512,512,30))
-    dset_EKF = data_dict['data'][:cov_num] + noise
+    dset_EKF = data_dict['data'][:cov_num]# + noise
 #    dset_EKF = [data_dict['data'][920] for i in range(cov_num)]
     print('EKF dataset size: {}'.format(np.shape(dset_EKF)))
     scaled_EKF_data = np.asarray(list(map(hf.scale_,list(map(hf.normalize,dset_EKF)),cov_num*[rnd_scale]))).reshape(cov_num,rnd_scale,rnd_scale,30)
@@ -72,7 +72,7 @@ if EKF:
     ekf_model = EKFCNN(probes,weights)
     ekf_model.run_EKF(scaled_EKF_data)
 
-snr = np.linspace(2.,2.,500)
+snr = np.linspace(0.,0.,500)
 for i in range(500):
     print('Predicting on sample {0}')
     redshifts = data_dict['redshifts']
@@ -83,7 +83,7 @@ for i in range(500):
     #else:
     combined_cubes = data_dict['data'][920]#-np.mod(i,200)]
     print(np.shape(combined_cubes))
-    rnd_scale = 64#np.random.choice(range(64,256,1))
+    rnd_scale = 256#np.random.choice(range(64,256,1))
     #noise = np.zeros((512,512,30))#
 
     noise =  snr[i]*np.random.normal(loc=0.,scale=snr[i]*np.std(combined_cubes),size=(512,512,30))#snr[i]*np.std(combined_cubes)*np.random.rand(512,512,30)
@@ -91,7 +91,7 @@ for i in range(500):
     print('Noise std: {}'.format(np.std(noise)))
     #data_sample = np.expand_dims(combined_cubes,axis=0)
     data_sample = hf.scale_(hf.normalize(combined_cubes + noise),rnd_scale).reshape(1,rnd_scale,rnd_scale,30)
-    label_sample = data_dict['labels'][-np.mod(i,200)]
+    label_sample = data_dict['labels'][920]#-np.mod(i,200)]
     print('scaled sample shape',np.shape(data_sample))
     predict = fcn.fcn_model.predict(data_sample)[0]
 
