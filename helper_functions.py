@@ -45,9 +45,11 @@ def load_21cmCubes_2(file_=None, partial_load=False):
             if partial_load:
                 data_dict['data'] = f['Data']['t21_snapshots'][:partial_load]
                 data_dict['labels'] = f['Data']['snapshot_labels'][:partial_load,:3]
+                data_dict['redshifts'] = np.empty(10)
             else:
                 data_dict['data'] = f['Data']['t21_snapshots'][...]
                 data_dict['labels'] = f['Data']['snapshot_labels'][...][:,:3]
+                data_dict['redshifts'] = np.empty(10)
     else:
         print('No file given.')
     print('Dataset loaded.')
