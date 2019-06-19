@@ -147,7 +147,7 @@ class FCN21CM():
             #print(e)
             #rnd_ind_t = np.random.choice(range(len(train_labels)),size=batch_size)
             epoch_inds_t = np.random.permutation(epoch_inds_t)
-            for i in range(len(train_labels)/batch_size):
+            for i in range(int(len(train_labels)/batch_size)):
                 rnd_ind_v = np.random.choice(range(len(val_labels)),size=batch_size)
 
                 #train_scale = train_data[rnd_ind_t]
@@ -170,6 +170,7 @@ class FCN21CM():
             if e % 10==0 and e!=0:
                 self.save(n=e)
                 epoch_loss_vten.append(np.mean(loss_arr_v))
+                print('Saving an intermediary model...')
 
             if resizing:
                 del(train_data)
@@ -208,9 +209,9 @@ class FCN21CM():
 
     def save(self,n=''):
         print('Saving trained model...')
-        self.fcn_model.save_weights(self.model_name + n +'.h5')
+        self.fcn_model.save_weights(self.model_name + str(n) +'.h5')
         model_json = self.fcn_model.to_json()
-        with open(self.model_name + n + '.json', "w") as json_file:
+        with open(self.model_name + str(n) + '.json', "w") as json_file:
             json_file.write(model_json)
         print('Model saved.')
         

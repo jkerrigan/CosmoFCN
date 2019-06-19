@@ -34,7 +34,7 @@ try:
     fcn.load()
 except:
     print('Model load error.')
-fcn.train(data_dict,epochs=100,batch_size=4,scalar_=1e0,fgcube=None)
+fcn.train(data_dict,epochs=100,batch_size=9,scalar_=1e0,fgcube=None)
 fcn.save()
 
 
