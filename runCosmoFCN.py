@@ -13,10 +13,10 @@ print(device_lib.list_local_devices())
 import os
 
 save = False
-EKF = True
+EKF = False
 # Load data
 
-modelname = 'error_TEST'
+modelname = 'error_TEST5'
 training='~/data/shared/v2_filtered_sort_dur0.6_low.h5' #just testing for code errors
 predicting = training
 
@@ -34,7 +34,7 @@ try:
     fcn.load()
 except:
     print('Model load error.')
-fcn.train(data_dict,epochs=100,batch_size=9,scalar_=1e0,fgcube=None)
+fcn.train(data_dict,epochs=50,batch_size=9,scalar_=1e0,fgcube=None)
 fcn.save()
 
 
@@ -93,17 +93,17 @@ data_dict_predict = hf.load_21cmCubes_2(os.path.expanduser(predicting))
 
 
 snr = np.linspace(0.,0.,500)
-for i in range(500):
+for i in range(len(data_dict_predict['data'])):
     print('Predicting on sample {0}')
     redshifts = data_dict_predict['redshifts']
-    eor_amp = data_dict_predict['eor_amp']
+#    eor_amp = data_dict_predict['eor_amp']
     #if False:#np.random.rand()>1.1:
     #    fgs = build_fg_z_cube(redshifts,eor_amp,scalar)
     #    combined_cubes = np.add(data_dict['data'][-i],fgs)
     #else:
-    combined_cubes = data_dict_predict['data'][920]#-np.mod(i,200)]
+    combined_cubes = data_dict_predict['data'][i]#-np.mod(i,200)]
     print(np.shape(combined_cubes))
-    rnd_scale = 256#np.random.choice(range(64,256,1))
+    rnd_scale = 128 #np.random.choice(range(64,256,1))
     #noise = np.zeros((512,512,30))#
 
     noise =  snr[i]*np.random.normal(loc=0.,scale=snr[i]*np.std(combined_cubes),size=(512,512,30))#snr[i]*np.std(combined_cubes)*np.random.rand(512,512,30)
@@ -111,7 +111,7 @@ for i in range(500):
     print('Noise std: {}'.format(np.std(noise)))
     #data_sample = np.expand_dims(combined_cubes,axis=0)
     data_sample = hf.scale_(hf.normalize(combined_cubes + noise),rnd_scale).reshape(1,rnd_scale,rnd_scale,30)
-    label_sample = data_dict_predict['labels'][920]#-np.mod(i,200)]
+    label_sample = data_dict_predict['labels'][i]#-np.mod(i,200)]
     print('scaled sample shape',np.shape(data_sample))
     predict = fcn.fcn_model.predict(data_sample)[0]
 
