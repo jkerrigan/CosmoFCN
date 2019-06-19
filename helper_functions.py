@@ -24,7 +24,7 @@ def load_21cmCubes():
     if host.rfind('intrepid') > 0:
         file_ = '/data4/plaplant/21cm/t21_snapshots_downsample_vary_both.hdf5'
     elif host.rfind('brown') > 0:
-        file_ = os.path.expanduser('~/data/shared/LaPlanteSims/t21_snapshots_downsample_vary_both.hdf5')
+        file_ = os.path.expanduser('~/data/shared/t21_snapshots_downsample_vary_both.hdf5')
 #    file_ = './21cmFastSlices.hdf5'
     with h5py.File(file_) as f:
         print(f.keys())

@@ -16,8 +16,8 @@ save = False
 EKF = True
 # Load data
 
-modelname = 'model'
-training='~/data/shared/sort_dur0.6_high.h5'
+modelname = 'error_TEST'
+training='~/data/shared/v2_filtered_sort_dur0.6_low.h5' #just testing for code errors
 predicting = training
 
 savedpath = os.getcwd()
@@ -25,7 +25,7 @@ if not os.path.isdir(modelname):
 	os.mkdir(modelname)
 os.chdir(modelname)
 
-data_dict = load_21cmCubes_2(_file=os.path.expanduser(training))
+data_dict = hf.load_21cmCubes_2(os.path.expanduser(training))
 #data = data_dict['data']
 #labels = data_dict['labels']
 
@@ -34,7 +34,7 @@ try:
     fcn.load()
 except:
     print('Model load error.')
-fcn.train(data_dict,epochs=1000,batch_size=20,scalar_=1e0,fgcube=None)
+fcn.train(data_dict,epochs=100,batch_size=4,scalar_=1e0,fgcube=None)
 fcn.save()
 
 
@@ -167,5 +167,14 @@ for i,(p_,f_) in enumerate(zip(pnames,fnames)):
 #        spec = None
     plot_cosmo_params(true_arr[i],predict_arr[i],error_arr[i],p_,f_,spec=spec)
     hf.empirical_error_plots(true_arr[i],predict_arr[i],error_arr[i],p_,f_,spec=spec)
+
+with open('modelsummary.txt','w') as f:
+    f.write(str(datetime.datetime.today())+'\n\n')
+    f.write('Model file name:' + modelname + '\n')
+    f.write('Training data:' + training + '\n')
+    f.write('Predicting on:' + predicting + '\n\n')
+    f.write('Model Summary: \n')
+
+fcn.writesummary()
 
 os.chdir(savedpath)
