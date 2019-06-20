@@ -141,7 +141,7 @@ class FCN21CM():
         gc.enable() #attempt garbage collection to release resources
         epoch_loss_t = []
         epoch_loss_v = []
-        epoch_loss_vten = [0]
+        epoch_loss_vten = []
         for e in range(epochs):
             print('Training Completed : {0}%'.format(100.*e/(1.*epochs)))
             #print(e)
@@ -167,7 +167,7 @@ class FCN21CM():
             epoch_loss_t.append(np.mean(loss_arr_t))
             epoch_loss_v.append(np.mean(loss_arr_v))
 
-            if e % 10==0 and e!=0:
+            if e % 5==0:
                 self.save(n=e)
                 epoch_loss_vten.append(np.mean(loss_arr_v))
                 print('Saving an intermediary model...')
@@ -188,30 +188,39 @@ class FCN21CM():
         
         with open('target_model_epochs.txt','w') as f:
             f.write('Minimum loss: ' + str(min(epoch_loss_vten)) +'\n')
-            lossval = self.findloss(losspercent=50.0,losslist=epoch_loss_vten)
+            f.write('Maximum loss: ' + str(max(epoch_loss_vten)) +'\n')
 
+            lossval = self.findloss(losspercent=0.75,losslist=epoch_loss_vten)
+            f.write('75% loss value: ' + str(lossval)+'\n')
+            f.write('75% epoch: ' + str((epoch_loss_vten.index(lossval))*5)+'\n')
+
+            lossval = self.findloss(losspercent=0.5,losslist=epoch_loss_vten)
             f.write('50% loss value: ' + str(lossval)+'\n')
-            f.write('50% epoch: ' + str(epoch_loss_vten.index(lossval)*10)+'\n')
+            f.write('50% epoch: ' + str((epoch_loss_vten.index(lossval))*5)+'\n')
 
-            lossval = self.findloss(losspercent=25.0,losslist=epoch_loss_vten)
+            lossval = self.findloss(losspercent=0.25,losslist=epoch_loss_vten)
             f.write('25% loss value: ' +str(lossval)+'\n')
-            f.write('25% epoch: ' + str(epoch_loss_vten.index(lossval)*10)+'\n')
+            f.write('25% epoch: ' + str((epoch_loss_vten.index(lossval))*5)+'\n')
 
         return self.fcn_model
 
 
 
-    def findloss(self,losspercent=100.0,losslist=None):
-        target = (max(losslist)+min(losslist))/(100.0/losspercent)
-        error = map(abs, np.array(losslist)-target)
-        return losslist[error.index(min(error))]
+    def findloss(self,losspercent=0,losslist=None):
+        target = (max(losslist)+min(losslist))*(1-losspercent)
+        print('Loss percent: ' + str(losspercent)+'\n')
+        print('Target: ' + str(target)+'\n')
+        error = np.array(list(map(abs, np.array(losslist)-target)))
+        print(error)
+        print(np.argmin(error))
+        return losslist[np.argmin(error)]
 
 
     def save(self,n=''):
         print('Saving trained model...')
-        self.fcn_model.save_weights(self.model_name + str(n) +'.h5')
+        self.fcn_model.save_weights(self.model_name + '_' + str(n) +'.h5')
         model_json = self.fcn_model.to_json()
-        with open(self.model_name + str(n) + '.json', "w") as json_file:
+        with open(self.model_name + '_' + str(n) + '.json', "w") as json_file:
             json_file.write(model_json)
         print('Model saved.')
         

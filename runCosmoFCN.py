@@ -11,13 +11,14 @@ from EKF import EKFCNN
 from tensorflow.python.client import device_lib
 print(device_lib.list_local_devices())
 import os
+import datetime
 
 save = False
 EKF = False
 # Load data
 
-modelname = 'error_TEST5'
-training='~/data/shared/v2_filtered_sort_dur0.6_low.h5' #just testing for code errors
+modelname = 'Uncertainty_2'
+training='~/data/shared/v2_filtered_sort_dur0.6_high.h5' #just testing for code errors
 predicting = training
 
 savedpath = os.getcwd()
@@ -34,8 +35,16 @@ try:
     fcn.load()
 except:
     print('Model load error.')
-fcn.train(data_dict,epochs=50,batch_size=9,scalar_=1e0,fgcube=None)
+fcn.train(data_dict,epochs=1000,batch_size=20,scalar_=1e0,fgcube=None)
 fcn.save()
+
+with open('modelsummary.txt','w') as f:
+    f.write(str(datetime.datetime.today())+'\n\n')
+    f.write('Model file name: ' + modelname + '\n')
+    f.write('Training data: ' + training + '\n')
+    f.write('Model Summary: \n')
+
+fcn.writesummary()
 
 
 # zmid, delta_z, zmean, alpha, kb
@@ -168,13 +177,7 @@ for i,(p_,f_) in enumerate(zip(pnames,fnames)):
     plot_cosmo_params(true_arr[i],predict_arr[i],error_arr[i],p_,f_,spec=spec)
     hf.empirical_error_plots(true_arr[i],predict_arr[i],error_arr[i],p_,f_,spec=spec)
 
-with open('modelsummary.txt','w') as f:
-    f.write(str(datetime.datetime.today())+'\n\n')
-    f.write('Model file name:' + modelname + '\n')
-    f.write('Training data:' + training + '\n')
-    f.write('Predicting on:' + predicting + '\n\n')
-    f.write('Model Summary: \n')
-
-fcn.writesummary()
+with open('predictsummary.txt','w') as f:
+    f.write('Predicting on: ' + predicting + '\n\n')
 
 os.chdir(savedpath)
