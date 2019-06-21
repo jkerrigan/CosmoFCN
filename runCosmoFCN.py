@@ -17,7 +17,7 @@ save = False
 EKF = False
 # Load data
 
-modelname = 'Uncertainty_2'
+modelname = 'Uncertainty_3'
 training='~/data/shared/v2_filtered_sort_dur0.6_high.h5' #just testing for code errors
 predicting = training
 
@@ -124,7 +124,7 @@ for i in range(len(data_dict_predict['data'])):
     print('scaled sample shape',np.shape(data_sample))
     predict = fcn.fcn_model.predict(data_sample)[0]
 
-    predict_err = ekf_model.pred_uncertainty(data_sample)
+   # predict_err = ekf_model.pred_uncertainty(data_sample)
     print('Predicted Midpoint {0} Duration {1} Mean Z {2}'.format(*predict))
     p1_arr.append(predict[0])
     p2_arr.append(predict[1])
@@ -139,7 +139,7 @@ for i in range(len(data_dict_predict['data'])):
 #    t4_arr.append(label_sample[3])
 #    t5_arr.append(label_sample[4])
     print('Names: {}'.format(['midpoint','duration','meanz','alpha','k0']))
-    print('Predicted Error: {}'.format(predict_err))
+ #   print('Predicted Error: {}'.format(predict_err))
     p1_arr_err.append(predict_err[0])
     p2_arr_err.append(predict_err[1])
     p3_arr_err.append(predict_err[2])

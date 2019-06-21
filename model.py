@@ -190,30 +190,44 @@ class FCN21CM():
             f.write('Minimum loss: ' + str(min(epoch_loss_vten)) +'\n')
             f.write('Maximum loss: ' + str(max(epoch_loss_vten)) +'\n')
 
-            lossval = self.findloss(losspercent=0.75,losslist=epoch_loss_vten)
-            f.write('75% loss value: ' + str(lossval)+'\n')
-            f.write('75% epoch: ' + str((epoch_loss_vten.index(lossval))*5)+'\n')
+            lossval = self.findloss(losspercent=0.90,losslist=epoch_loss_vten)
+            f.write('90% loss value: ' +str(epoch_loss_vten[lossval])+'\n')
+            f.write('90% epoch: ' + str(lossval*5)+'\n')
 
-            lossval = self.findloss(losspercent=0.5,losslist=epoch_loss_vten)
-            f.write('50% loss value: ' + str(lossval)+'\n')
-            f.write('50% epoch: ' + str((epoch_loss_vten.index(lossval))*5)+'\n')
+            lossval = self.findloss(losspercent=0.85,losslist=epoch_loss_vten)
+            f.write('85% loss value: ' +str(epoch_loss_vten[lossval])+'\n')
+            f.write('85% epoch: ' + str(lossval*5)+'\n')
+
+            lossval = self.findloss(losspercent=0.80,losslist=epoch_loss_vten)
+            f.write('80% loss value: ' +str(epoch_loss_vten[lossval])+'\n')
+            f.write('80% epoch: ' + str(lossval*5)+'\n')
+
+            lossval = self.findloss(losspercent=0.75,losslist=epoch_loss_vten)
+            f.write('75% loss value: ' +str(epoch_loss_vten[lossval])+'\n')
+            f.write('75% epoch: ' + str(lossval*5)+'\n')
+
+            lossval = self.findloss(losspercent=0.50,losslist=epoch_loss_vten)
+            f.write('50% loss value: ' +str(epoch_loss_vten[lossval])+'\n')
+            f.write('50% epoch: ' + str(lossval*5)+'\n')
 
             lossval = self.findloss(losspercent=0.25,losslist=epoch_loss_vten)
-            f.write('25% loss value: ' +str(lossval)+'\n')
-            f.write('25% epoch: ' + str((epoch_loss_vten.index(lossval))*5)+'\n')
+            f.write('25% loss value: ' +str(epoch_loss_vten[lossval])+'\n')
+            f.write('25% epoch: ' + str(lossval*5)+'\n')
 
         return self.fcn_model
 
 
 
-    def findloss(self,losspercent=0,losslist=None):
-        target = (max(losslist)+min(losslist))*(1-losspercent)
+    def findloss(self, losspercent=0, losslist=None):
+	
+        invert = [1.0/x for x in losslist]
+        invert[:] = [x - np.min(invert) for x in invert]
+        invert[:] = [x / np.max(invert) for x in invert] 
+        target = np.argmin([abs(losspercent-x) for x in invert]) 
         print('Loss percent: ' + str(losspercent)+'\n')
-        print('Target: ' + str(target)+'\n')
-        error = np.array(list(map(abs, np.array(losslist)-target)))
-        print(error)
-        print(np.argmin(error))
-        return losslist[np.argmin(error)]
+        print('Target: ' + str(losslist[target])+'\n')
+        print(list(invert))
+        return target
 
 
     def save(self,n=''):
