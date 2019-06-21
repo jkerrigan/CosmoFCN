@@ -168,7 +168,7 @@ class FCN21CM():
             epoch_loss_v.append(np.mean(loss_arr_v))
 
             if e % 5==0:
-                self.save(n=e)
+                self.save(n=('_'+str(e)))
                 epoch_loss_vten.append(np.mean(loss_arr_v))
                 print('Saving an intermediary model...')
 
@@ -232,9 +232,9 @@ class FCN21CM():
 
     def save(self,n=''):
         print('Saving trained model...')
-        self.fcn_model.save_weights(self.model_name + '_' + str(n) +'.h5')
+        self.fcn_model.save_weights(self.model_name + n +'.h5')
         model_json = self.fcn_model.to_json()
-        with open(self.model_name + '_' + str(n) + '.json', "w") as json_file:
+        with open(self.model_name + n + '.json', "w") as json_file:
             json_file.write(model_json)
         print('Model saved.')
         
