@@ -43,13 +43,29 @@ def load_21cmCubes_2(file_=None, partial_load=False):
         with h5py.File(file_) as f:
             data_dict = {}
             if partial_load:
-                data_dict['data'] = f['Data']['t21_snapshots'][:partial_load]
-                data_dict['labels'] = f['Data']['snapshot_labels'][:partial_load,:3]
+                data_dict['data'] = f['Data']['t21_snapshots'][partial_load]
+                data_dict['labels'] = f['Data']['snapshot_labels'][partial_load,:3]
                 data_dict['redshifts'] = np.empty(10)
             else:
                 data_dict['data'] = f['Data']['t21_snapshots'][...]
                 data_dict['labels'] = f['Data']['snapshot_labels'][...][:,:3]
                 data_dict['redshifts'] = np.empty(10)
+    else:
+        print('No file given.')
+    print('Dataset loaded.')
+    return data_dict
+
+def load_21cmCubes_3(file_=None, size=1000):
+    if file_:
+        print('Loading dataset from {0} ...'.format(file_))
+        data_dict = {}
+        with h5py.File(file_) as f:
+            cube = f['Data']['t21_snapshots'][...]
+            print(list(f['Data']['snapshot_labels']))
+            cube_label = f['Data']['snapshot_labels'][...][:3]
+        data_dict['data'] = [cube for x in range(size)]
+        data_dict['labels'] = [cube_label for x in range(size)]
+        data_dict['redshifts'] = np.empty(10)
     else:
         print('No file given.')
     print('Dataset loaded.')
@@ -129,7 +145,7 @@ def scale_sample(data_dict,fgcube=None):
     # dataset comes in sizes of 512x512x30 (2Gpc,2Gpc,30 z slices)
     # we want to subsample this space to sizes < 1Gpc
     new_dict = {}
-    scale = 128 #np.random.choice(range(64,256,30)) #32 minimum because of pooling operations (min 62.5 Gpc)
+    scale = 256 #np.random.choice(range(64,256,30)) #32 minimum because of pooling operations (min 62.5 Gpc)
     print('Sampled to the scale of {} Mpc'.format(2000.*scale/512.))
     print('Length of data {}'.format(len(data_dict['data'])))
     print('Scale {}'.format(scale))

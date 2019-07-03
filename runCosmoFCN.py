@@ -17,8 +17,8 @@ save = False
 EKF = False
 # Load data
 
-modelname = 'Uncertainty_3'
-training='~/data/shared/v2_filtered_sort_dur0.6_high.h5' #just testing for code errors
+modelname = 'train_on_1_2'
+training='~/data/shared/v2_filtered_single_sample8.5.h5' 
 predicting = training
 
 savedpath = os.getcwd()
@@ -26,7 +26,7 @@ if not os.path.isdir(modelname):
 	os.mkdir(modelname)
 os.chdir(modelname)
 
-data_dict = hf.load_21cmCubes_2(os.path.expanduser(training))
+data_dict = hf.load_21cmCubes_3(os.path.expanduser(training))
 #data = data_dict['data']
 #labels = data_dict['labels']
 
@@ -35,13 +35,14 @@ try:
     fcn.load()
 except:
     print('Model load error.')
-fcn.train(data_dict,epochs=1000,batch_size=20,scalar_=1e0,fgcube=None)
+fcn.train(data_dict,epochs=1000,batch_size=200,scalar_=1e0,fgcube=None)
 fcn.save()
 
 with open('modelsummary.txt','w') as f:
     f.write(str(datetime.datetime.today())+'\n\n')
     f.write('Model file name: ' + modelname + '\n')
     f.write('Training data: ' + training + '\n')
+    f.write('Notes: Training on one sample over and over again. \n')
     f.write('Model Summary: \n')
 
 fcn.writesummary()
@@ -72,11 +73,11 @@ p5_arr_err = []
 #t0 = time()
 #hf.tf_scale(data_dict)
 #print('Tensorflow implementation time: ',time() - t0)
-
+'''
 t0 = time()
 hf.scale_sample(data_dict)
 print('Numpy implementation time: ',time() - t0)
-
+'''
 
 if EKF:
     cov_num = 200
@@ -91,17 +92,15 @@ if EKF:
     ekf_model = EKFCNN(probes,weights)
     ekf_model.run_EKF(scaled_EKF_data)
 
-
-
 newpath = modelname + '_data'
 if not os.path.isdir(newpath):
 	os.mkdir(newpath)
 os.chdir(newpath)
 
-data_dict_predict = hf.load_21cmCubes_2(os.path.expanduser(predicting))
+data_dict_predict = hf.load_21cmCubes_3(os.path.expanduser(predicting))
 
 
-snr = np.linspace(0.,0.,500)
+snr = np.linspace(0.,0.,len(data_dict_predict['data']))
 for i in range(len(data_dict_predict['data'])):
     print('Predicting on sample {0}')
     redshifts = data_dict_predict['redshifts']
@@ -112,7 +111,7 @@ for i in range(len(data_dict_predict['data'])):
     #else:
     combined_cubes = data_dict_predict['data'][i]#-np.mod(i,200)]
     print(np.shape(combined_cubes))
-    rnd_scale = 128 #np.random.choice(range(64,256,1))
+    rnd_scale = 256 #np.random.choice(range(64,256,1))
     #noise = np.zeros((512,512,30))#
 
     noise =  snr[i]*np.random.normal(loc=0.,scale=snr[i]*np.std(combined_cubes),size=(512,512,30))#snr[i]*np.std(combined_cubes)*np.random.rand(512,512,30)
@@ -121,10 +120,11 @@ for i in range(len(data_dict_predict['data'])):
     #data_sample = np.expand_dims(combined_cubes,axis=0)
     data_sample = hf.scale_(hf.normalize(combined_cubes + noise),rnd_scale).reshape(1,rnd_scale,rnd_scale,30)
     label_sample = data_dict_predict['labels'][i]#-np.mod(i,200)]
+    print(label_sample.shape)
     print('scaled sample shape',np.shape(data_sample))
     predict = fcn.fcn_model.predict(data_sample)[0]
 
-   # predict_err = ekf_model.pred_uncertainty(data_sample)
+  #  predict_err = ekf_model.pred_uncertainty(data_sample)
     print('Predicted Midpoint {0} Duration {1} Mean Z {2}'.format(*predict))
     p1_arr.append(predict[0])
     p2_arr.append(predict[1])
@@ -140,19 +140,20 @@ for i in range(len(data_dict_predict['data'])):
 #    t5_arr.append(label_sample[4])
     print('Names: {}'.format(['midpoint','duration','meanz','alpha','k0']))
  #   print('Predicted Error: {}'.format(predict_err))
-    p1_arr_err.append(predict_err[0])
-    p2_arr_err.append(predict_err[1])
-    p3_arr_err.append(predict_err[2])
+
+ #   p1_arr_err.append(predict_err[0])
+ #   p2_arr_err.append(predict_err[1])
+  #  p3_arr_err.append(predict_err[2])
 #    p4_arr_err.append(predict_err[3])
 #    p5_arr_err.append(predict_err[4])
-
+'''
 pl.figure()
 pl.plot(snr,p1_arr_err,label='Midpoint')
 pl.plot(snr,p2_arr_err,label='Duration')
 pl.plot(snr,p3_arr_err,label='Mean Z')
 pl.legend()
 pl.savefig('SNRvsUncertainty.pdf',dpi=300)
-
+'''
 pl.figure()
 pl.plot(np.array(ssize)*2000./512.,np.abs(np.array(t2_arr)-np.array(p2_arr)),'.')
 pl.xlabel('Cube Size (Mpc)')
@@ -161,7 +162,7 @@ pl.savefig('ErrorVsSize.pdf',dpi=300)
     
 predict_arr = [p1_arr,p2_arr,p3_arr]#,p4_arr,p5_arr]
 true_arr = [t1_arr,t2_arr,t3_arr]#,t4_arr,t5_arr]
-error_arr = [p1_arr_err,p2_arr_err,p3_arr_err]#,p4_arr_err,p5_arr_err]
+#error_arr = [p1_arr_err,p2_arr_err,p3_arr_err]#,p4_arr_err,p5_arr_err]
 pnames = ['$z_{50\%}$','$\Delta z$','$\overline{z}$']#,'alpha','$k_{0}$']
 fnames = ['midpoint','duration','meanz']#,'alpha','k0']
 
@@ -169,6 +170,9 @@ if save:
     np.savez('fg_scalar_{0}.npz'.format(scalar),true=true_arr,predicted=predict_arr,names=fnames)
 
 np.savez('predictions_output.npz',targets=true_arr,predictions=predict_arr,names=fnames)
+
+error_arr = np.zeros_like(predict_arr)
+
 for i,(p_,f_) in enumerate(zip(pnames,fnames)):
 #    if f_ == 'duration':
     spec = 30.*(np.array(ssize)/256.)#np.exp(np.array(true_arr[0]) - np.array(true_arr[2]))

@@ -1,5 +1,5 @@
 from keras.layers import ReLU,BatchNormalization
-from keras.layers import Conv2D,MaxPool2D,GlobalMaxPooling2D
+from keras.layers import Conv2D,MaxPool2D,GlobalMaxPooling2D, GlobalAveragePooling2D
 from keras.layers import Input, Dense, Reshape, Multiply, Lambda, concatenate, Dropout
 from keras.models import Model
 from keras.optimizers import Adam
@@ -35,15 +35,14 @@ class FCN21CM():
     
     def FCN(self):
         inputs = Input(shape=self.cube_size)
+
+
         self.s1 = stacked_layer(inputs,ksize=3,fsize=32,psize=4) # 64,64,10,64
-        #s1_ms = Dropout(rate=0.5)(stacked_layer(inputs,ksize=7,fsize=64,psize=4))
-        #s1_ls = Dropout(rate=0.5)(stacked_layer(inputs,ksize=3,fsize=64,psize=4))
-        #xs1_ = concatenate([s1_ss,s1_ms],axis=-1)
-        #s1 = concatenate([s1_,s1_ls],axis=-1)
-        self.s2 = Dropout(rate=0.)(stacked_layer(self.s1,ksize=3,fsize=64,psize=2)) # 16,16,10,128
-        self.s3 = Dropout(rate=0.)(stacked_layer(self.s2,ksize=3,fsize=128,psize=2)) # 4,4,5,256
-        self.fc1 = Dropout(rate=0.)(stacked_layer(self.s3,ksize=3,fsize=256,psize=2)) # 1,1,1,2048
-        self.out = Dropout(rate=0.0)(Conv2D(filters=3,kernel_size=3,padding='same')(self.fc1))
+        self.s2 = Dropout(rate=0.0)(stacked_layer(self.s1,ksize=3,fsize=64,psize=2)) # 16,16,10,128
+        self.s3 = Dropout(rate=0.0)(stacked_layer(self.s2,ksize=3,fsize=128,psize=2)) # 4,4,5,256
+#        self.s4 = Dropout(rate=0.0)(stacked_layer(self.s3,ksize=3,fsize=256,psize=2))
+        self.fc1 = Dropout(rate=0.0)(stacked_layer(self.s3,ksize=3,fsize=256,psize=2)) # 1,1,1,2048
+        self.out = Dropout(rate=0.0)(Conv2D(filters=3,kernel_size=1,padding='same')(self.fc1))
         self.max_out = GlobalMaxPooling2D()(self.out)
         
         model = Model(inputs=inputs,outputs=self.max_out)
