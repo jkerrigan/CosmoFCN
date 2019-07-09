@@ -13,8 +13,9 @@ pl.rcParams.update({'font.size':18})
 import socket
 import os
 import tensorflow as tf
+from time import time
 
-def load_21cmCubes():
+def load_21cmCubes(partial_load=False):
     # Cubes are in shape 512*512*30
     # Output will be in (X,Y,Z) = (512,512,30)
 #    with h5py.File('/pylon5/as5fp5p/plaplant/21cm/t21_snapshots_downsample.hdf5') as f:
@@ -26,13 +27,21 @@ def load_21cmCubes():
     elif host.rfind('brown') > 0:
         file_ = os.path.expanduser('~/data/shared/LaPlanteSims/t21_snapshots_downsample_vary_both.hdf5')
 #    file_ = './21cmFastSlices.hdf5'
+    t0 = time()
     with h5py.File(file_) as f:
         print(f.keys())
         data_dict = {}
         data_dict['redshifts'] = f['Data']['layer_redshifts'][...]
-        data_dict['data'] = np.asarray([cube.T for cube in f['Data']['t21_snapshots'][...]])
-        data_dict['labels'] = f['Data']['snapshot_labels'][...][:,:3]
+        if partial_load:
+            data_dict['data'] = f['Data']['t21_snapshots'][:100]
+            data_dict['labels'] = f['Data']['snapshot_labels'][:100,:3]
+        else:
+            data_dict['data'] = f['Data']['t21_snapshots'][...]#np.asarray([cube.T for cube in f['Data']['t21_snapshots'][...]])
+        #data_dict['data'] = list(map(np.transpose,data_dict['data']))
+            data_dict['labels'] = f['Data']['snapshot_labels'][...][:,:3]
         data_dict['eor_amp'] = np.max(data_dict['data'][0])
+    print('Dataset loading took {0} secs.'.format(time()-t0))
+    data_dict['data'] = list(map(np.transpose,data_dict['data']))
     print('Dataset size {0}'.format(np.shape(data_dict['data'])))
     print('Label size {0}'.format(np.shape(data_dict['labels'])))
     return data_dict
@@ -127,7 +136,7 @@ def scale_sample(data_dict,fgcube=None):
     # dataset comes in sizes of 512x512x30 (2Gpc,2Gpc,30 z slices)
     # we want to subsample this space to sizes < 1Gpc
     new_dict = {}
-    scale = 256#np.random.choice(range(64,256,30)) #32 minimum because of pooling operations (min 62.5 Gpc)
+    scale = 128#np.random.choice(range(64,256,30)) #32 minimum because of pooling operations (min 62.5 Gpc)
     print('Sampled to the scale of {} Mpc'.format(2000.*scale/512.))
     print('Length of data {}'.format(len(data_dict['data'])))
     print('Scale {}'.format(scale))
@@ -182,7 +191,7 @@ def tf_scale(data_dict):
 
 def normalize(data_dict):
     def standard_(x):
-        return (x - np.mean(x))/np.std(x)#(np.max(x)-np.min(x))
+        return (x - np.mean(x))#/np.std(x)#(np.max(x)-np.min(x))
     try:
         data_dict['data'] = np.asarray(list(map(standard_,data_dict['data'])))
         #norm_dict['labels'] = data_dict['labels']
@@ -213,29 +222,26 @@ def expand_cubes(dict_):
     # the number of realizations we have
     data_ = []
     labels = []
-    for key in dict_.keys():
-        # Augment data
-        for i in range(10):
+    for i,cube in enumerate(dict_['data']):
+        # Augment data bloat to 3x
+        for j in range(2):
             rnd = np.random.rand()
             if rnd < .2:
-                data_aug = dict_[key][::-1,:,:]
+                data_aug = cube[::-1,:,:]
             elif rnd > .2 and rnd <= .4:
-                data_aug = dict_[key][:,::-1,:]
-            elif rnd > .4 and rnd < .6:
-                data_aug = dict_[key][::-1,::-1,:]
-            elif rnd > .6 and rnd < .8:
-                data_aug = dict_[key][::-1,:,::-1]
+                data_aug = cube[:,::-1,:]
+            elif rnd > .6:
+                data_aug = cube[::-1,::-1,:]
             else:
-                data_aug = dict_[key][:,::-1,::-1]
-                
-            if np.random.rand() > 0.5:
-                data_aug += 0.1*np.std(data_aug)*np.random.randn(*np.shape(data_aug))
+                data_aug = cube
+            #if np.random.rand() > 0.5:
+            #    data_aug += 0.1*np.std(data_aug)*np.random.randn(*np.shape(data_aug))
             data_.append(data_aug)
-            labels.append(key)
+            labels.append(dict_['labels'][i])
 
     # Grab random permutations of 2D slices
-    data_ = np.expand_dims(np.array(list(map(pull_by_freq,data_))).reshape(-1,256,256),axis=-1)
-    labels = np.array([128*[label] for label in labels]).reshape(-1)
+    #data_ = np.expand_dims(np.array(list(map(pull_by_freq,data_))).reshape(-1,256,256),axis=-1)
+    #labels = np.array([128*[label] for label in labels]).reshape(-1)
     return data_,labels
 
 def empirical_error_plots(t1_arr,p1_arr,err_arr,param,fname,spec=None):
@@ -260,9 +266,9 @@ def empirical_error_plots(t1_arr,p1_arr,err_arr,param,fname,spec=None):
 #    pl.xlabel('Predicted {}'.format(param))
     
     pl.subplot(212)
-    std_rnd = np.round(float(np.std(p1_arr)),2)
+    std_rnd = np.round(np.abs(float(np.std(p1_arr)+np.mean(p1_arr)-t1_arr[0])),2)
     mean_rnd = np.round(float(np.mean(err_arr)),2)
-    pl.hist(p1_arr,histtype='step',fill=False,label='$\sigma_{e}$'+': {0:.2f}'.format(std_rnd))
+    pl.hist(p1_arr,histtype='step',fill=False,label='Expected $\sigma_{e}$'+': {0:.2f}'.format(std_rnd))
     pl.hist(p1_arr,histtype='step',fill=False,label='$\sigma_{EKF}$'+': {0:.2f}'.format(mean_rnd))
 #    pl.text(p1_min*1.05,20,r'$\sigma_{e}$'+': {0:.2f}'.format(std_rnd))
 #    pl.text(p1_min*1.05,10,r'$\bar{\sigma}_{EKF}$'+': {0:.2f}'.format(mean_rnd))
@@ -278,6 +284,10 @@ def empirical_error_plots(t1_arr,p1_arr,err_arr,param,fname,spec=None):
 #    pl.xlabel('Uncertainties')
 #    pl.legend()
     pl.savefig('empirical_errs_{}.pdf'.format(fname))
+
+def distribution_measure(t1_arr,p1_arr,err_arr):
+    acceptable = np.sum(np.array(err_arr) > np.abs(np.array(t1_arr)-np.array(p1_arr)))
+    print(r'% of measurements within 1 std. : {0}'.format((1.*acceptable)/len(p1_arr)))
         
 def plot_cosmo_params(t1_arr,p1_arr,err_arr,param,fname,spec=None):
     t1_arr = np.array(t1_arr)

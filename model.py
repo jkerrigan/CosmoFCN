@@ -1,5 +1,5 @@
 from keras.layers import ReLU,BatchNormalization
-from keras.layers import Conv2D,MaxPool2D,GlobalMaxPooling2D
+from keras.layers import Conv2D,MaxPool2D,GlobalMaxPooling2D,GlobalAveragePooling2D
 from keras.layers import Input, Dense, Reshape, Multiply, Lambda, concatenate, Dropout
 from keras.models import Model
 from keras.optimizers import Adam
@@ -10,6 +10,7 @@ import matplotlib
 matplotlib.use('AGG')
 import matplotlib.pyplot as pl
 import gc
+from time import time
 
 def stacked_layer(x,ksize=3,fsize=128,psize=(8,8),weights=None,trainable=True):
     if weights == None:
@@ -35,20 +36,16 @@ class FCN21CM():
     
     def FCN(self):
         inputs = Input(shape=self.cube_size)
-        self.s1 = stacked_layer(inputs,ksize=3,fsize=32,psize=4) # 64,64,10,64
-        #s1_ms = Dropout(rate=0.5)(stacked_layer(inputs,ksize=7,fsize=64,psize=4))
-        #s1_ls = Dropout(rate=0.5)(stacked_layer(inputs,ksize=3,fsize=64,psize=4))
-        #xs1_ = concatenate([s1_ss,s1_ms],axis=-1)
-        #s1 = concatenate([s1_,s1_ls],axis=-1)
-        self.s2 = Dropout(rate=0.)(stacked_layer(self.s1,ksize=3,fsize=64,psize=2)) # 16,16,10,128
-        self.s3 = Dropout(rate=0.)(stacked_layer(self.s2,ksize=3,fsize=128,psize=2)) # 4,4,5,256
-        self.fc1 = Dropout(rate=0.)(stacked_layer(self.s3,ksize=3,fsize=256,psize=2)) # 1,1,1,2048
-        self.out = Dropout(rate=0.0)(Conv2D(filters=3,kernel_size=3,padding='same')(self.fc1))
-        self.max_out = GlobalMaxPooling2D()(self.out)
+        self.s1 = stacked_layer(inputs,ksize=3,fsize=128,psize=4) # 64,64,10,64
+        self.s2 = Dropout(rate=0.)(stacked_layer(self.s1,ksize=3,fsize=256,psize=2)) # 16,16,10,128
+        self.s3 = Dropout(rate=0.)(stacked_layer(self.s2,ksize=3,fsize=512,psize=2)) # 4,4,5,256
+        self.fc1 = Dropout(rate=0.)(stacked_layer(self.s3,ksize=3,fsize=1024,psize=2)) # 1,1,1,2048
+        self.out = Dropout(rate=0.0)(Conv2D(filters=3,kernel_size=1,padding='same',activation='relu')(self.fc1))
+        self.max_out = GlobalAveragePooling2D()(self.out)
         
         model = Model(inputs=inputs,outputs=self.max_out)
         model.compile(optimizer='adam',
-              loss='mean_squared_error',
+              loss='mean_absolute_error',
               metrics=['accuracy'])
         return model
 
@@ -57,28 +54,28 @@ class FCN21CM():
         print('w1',np.shape(weights))
         if layer2output == '0':
             model = Model(inputs=inputs,outputs=inputs)
-        self.s1_ = stacked_layer(inputs,ksize=3,fsize=32,psize=4,weights=weights[:6])
+        self.s1_ = stacked_layer(inputs,ksize=3,fsize=128,psize=4,weights=weights[:6])
         if layer2output == '1':
             model = Model(inputs=inputs,outputs=self.s1_)
             return model
 #        print('w2',np.shape(weights[1]))
-        self.s2_ = stacked_layer(self.s1_,ksize=3,fsize=64,psize=2,weights=weights[6:12])
+        self.s2_ = stacked_layer(self.s1_,ksize=3,fsize=256,psize=2,weights=weights[6:12])
         if layer2output == '2':
             model = Model(inputs=inputs,outputs=self.s2_)
             return model
 #        print('w3',np.shape(weights[2]))
-        self.s3_ = stacked_layer(self.s2_,ksize=3,fsize=128,psize=2,weights=weights[12:18])
+        self.s3_ = stacked_layer(self.s2_,ksize=3,fsize=512,psize=2,weights=weights[12:18])
         if layer2output == '3':
             model = Model(inputs=inputs,outputs=self.s3_)
             return model
-        self.fc1_ = stacked_layer(self.s3_,ksize=3,fsize=256,psize=2,weights=weights[18:24])
+        self.fc1_ = stacked_layer(self.s3_,ksize=3,fsize=1024,psize=2,weights=weights[18:24])
         if layer2output == '4':
             model = Model(inputs=inputs,outputs=self.fc1_)
             return model
-        self.out_ = Conv2D(filters=3,kernel_size=3,padding='same',weights=weights[24:26])(self.fc1_)
-        self.max_out = GlobalMaxPooling2D(weights=weights[26:30])(self.out_)
+        self.out_ = Conv2D(filters=3,kernel_size=1,padding='same',weights=weights[24:26],activation='relu')(self.fc1_)
+        self.max_out = GlobalAveragePooling2D(weights=weights[26:30])(self.out_)
         if layer2output == '5':
-            model = Model(inputs=inputs,outputs=self.out_)
+            model = Model(inputs=inputs,outputs=self.max_out)
             return model
 #0,1,6,7,12,13,18,19,24,25
     def get_probes(self):
@@ -125,8 +122,12 @@ class FCN21CM():
         print('Scaling down cubes...')
 #        data_dict_ = hf.scale_sample(data_dict)
         print('Normalizing scaled data cubes...')
+        t0 = time()
         data_dict = hf.normalize(data_dict) # normalize all data once and first
+        print('Normalizing dataset took {0} secs.'.format(time()-t0))
+        t0 = time()
         data_dict_ = hf.scale_sample(data_dict)
+        print('Scaling dataset took {0} secs.'.format(time()-t0))
         data = np.copy(data_dict_['data'])
         labels = np.copy(data_dict_['labels'])
         redshifts = np.copy(data_dict_['redshifts'])
@@ -172,8 +173,12 @@ class FCN21CM():
                 #print('Rescaling down new cubes...')
                 #data_dict_ = hf.normalize(data_dict)
                 data_dict_ = hf.scale_sample(data_dict)
+                print('Expanding data volume...')
+                data,labels = hf.expand_cubes(data_dict_)
+                print('Dataset size now contains {0} samples.'.format(len(data)))
                 #print('Normalizing new scaled data cubes...')
-                data = np.copy(data_dict_['data'])
+                train_labels = np.array(labels[:int(length*0.8)])
+                val_labels = np.array(labels[int(length*0.8):])
                 del(data_dict_)
                 train_data = np.array(data[:int(length*0.8)])
                 val_data = np.array(data[int(length*0.8):])
