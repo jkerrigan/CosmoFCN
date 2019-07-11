@@ -19,12 +19,12 @@ data_dict = load_21cmCubes(partial_load=True)
 #data = data_dict['data']
 #labels = data_dict['labels']
 
-fcn = FCN21CM(lr=0.003,model_name='test_model')
+fcn = FCN21CM(lr=0.003,model_name='NoBatchNorm')
 try:
     fcn.load()
 except:
     print('Model load error.')
-#fcn.train(data_dict,epochs=5000,batch_size=40,scalar_=1e0,fgcube=None)
+#fcn.train(data_dict,epochs=10000,batch_size=40,scalar_=1e0,fgcube=None)
 #fcn.save()
 
 
@@ -62,7 +62,7 @@ print('Numpy implementation time: ',time() - t0)
 if EKF:
     cov_num = 100
     rnd_scale = 128#np.random.choice(range(64,256,1))
-    noise =  0.*np.random.normal(loc=0.,scale=.01*np.std(data_dict['data'][30]),size=(cov_num,512,512,30))
+    noise =  1.*np.random.normal(loc=0.,scale=.01*np.std(data_dict['data'][30]),size=(cov_num,512,512,30))
 #    dset_EKF = data_dict['data'][:cov_num]# + noise
     dset_EKF = [data_dict['data'][80] for i in range(cov_num)]+noise
     print('EKF dataset size: {}'.format(np.shape(dset_EKF)))
@@ -72,7 +72,7 @@ if EKF:
     ekf_model = EKFCNN(probes,weights)
     ekf_model.run_EKF(scaled_EKF_data)
 
-snr = np.linspace(.0,.0,200)
+snr = np.linspace(1.,1.,200)
 for i in range(200):
     print('Predicting on sample {0}')
     redshifts = data_dict['redshifts']

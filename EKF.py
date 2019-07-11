@@ -16,7 +16,7 @@ class EKFCNN():
 
     def __init__(self,probes,weights):
         self.probes = probes
-        self.weight_layers = np.array(weights)[[0,6,12,18,24]]
+        self.weight_layers = np.array(weights)[[0,2,4,6,8]]
         self.sess = tf.Session()
         self.successive_layer = []
 
@@ -37,24 +37,24 @@ class EKFCNN():
         sess = self.sess
         Qs = np.copy(self.Qs)
         weight_layers = self.weight_layers #[model_layer.get_weights()[0] for model_layer in self.model] #this may not be correct
-        [print() for weights in weight_layers]
+        print(['Weights shape {0}'.format(np.shape(weights)) for weights in weight_layers])
         #model_covar_matrix = np.zeros((30,30))
-#        diffX = np.zeros_like(x)
+        diffX = np.zeros_like(x)
 #        diffX = np.copy(x)
 #        diffX += x
-#        for i in range(30):
-#            if i != 29:
-#                diffX[:,:,i] = x[:,:,i+1] - x[:,:,i]
-#            else:
-#                diffX[:,:,i] = x[:,:,i] - x[:,:,i-1]
-#        covmat_0 = np.array([np.std(diffX[:,:,i])*np.std(diffX[:,:,j]) for i in range(30) for j in range(30)]).reshape(30,30)
+        for i in range(30):
+            if i != 29:
+                diffX[:,:,i] = x[:,:,i+1] - x[:,:,i]
+            else:
+                diffX[:,:,i] = x[:,:,i] - x[:,:,i-1]
+        covmat_0 = np.array([np.std(diffX[:,:,i])*np.std(diffX[:,:,j]) for i in range(30) for j in range(30)]).reshape(30,30)
 #        print(covmat_0)
 #        stds_diag = [np.std(diffX[:,:,i])**2 for i in range(30)]
 #        print('Initial cov diagonals: ',stds_diag)
 #        covmat_0 = np.diag(stds_diag)
-        covmat_0 = np.identity(30)
+#        covmat_0 = np.identity(30)
 #        print('Initial covariance estimate: {}'.format(stds_diag))
-        pred_layers_b = []
+        pred_layers_b = [x]
         [pred_layers_b.append(pred.predict(x)) for pred in self.probes]
         offset_pred_layers = [[x,l1,l2] for i,(l1,l2) in zip(range(5),zip(pred_layers_b[:6],pred_layers_b[1:]))]
 #        print('Number of predictive layers: ',len(pred_layers_b))
@@ -68,7 +68,8 @@ class EKFCNN():
             print('predict x0 shape: {0}'.format(np.shape(pred_layers_b[i])))
             print('predict x1 shape: {0}'.format(np.shape(pred_layers_b[i+1])))
             print('weights shape: {0}'.format(np.shape(weight_layers[i])))
-            F_ = jacobian_v2(pred_layers_b[i],pred_layers_b[i+1],weight_layers[i+1])
+            #F_ = jacobian_v2(pred_layers_b[i],pred_layers_b[i+1],weight_layers[i])
+            F_ = DenseApproxJacob(pred_layers_b[i],pred_layers_b[i+1],weight_layers[i])
             #F_ = np.where(F_>0.,F_,0.)
         #    F_,XL_ = jacobianCNN(self.probes[i].predict(x),weight_layers[i],self.probes[i],output=False)
             jacobians.append(F_)
@@ -98,12 +99,15 @@ def covar_recursive(cov0,jacobians,Qs):
         #jacobs_masked = np.ma.array(jacobians[0],mask=jacobians[0]<0.)
         #jacob = np.ma.mean(jacobs_masked,axis=0)
 #        np.einsum('ij,kjlm->iklm',cov0,jacob.T)
+# if we dense approx
+        sig = np.tensordot(cov0,jacob.T,axes=1)
+        sigmas = np.tensordot(jacob,sig,axes=1)
 
-#        sig = np.tensordot(cov0,jacob,axes=1)
-#        sigmas = np.tensordot(jacob.T,sig,axes=1)
+# if we're keeping spatial
+#        sig = np.einsum('ij,kjlm->iklm',cov0,jacob.T)
+#        sigmas = np.einsum('ijkl,kmji->lm',jacob,sig)
 
-        sig = np.einsum('ij,kjlm->iklm',cov0,jacob.T)
-        sigmas = np.einsum('ijkl,kmji->lm',jacob,sig)
+
         #sigmas /= (1.*jlen/2.)**2
         #sigmas = np.ma.dot(jacob,np.ma.dot(cov0,jacob.T))#(np.matmul(jacob,np.matmul(cov0,jacob.T)))
 #        sigmas = np.nanmean([(np.matmul(jacob,np.matmul(cov0,jacob.T))) for jacob in jacobians[0]],axis=0)
@@ -160,25 +164,13 @@ def DenseApproxJacob(A,B,W):
     Bsh = np.shape(B)
     Wsh = np.shape(W)
     try:
-        A1 = np.random.choice(range(Ash[1]))
-        A2 = np.random.choice(range(Ash[2]))
-        B1 = np.random.choice(range(Bsh[1]))
-        B2 = np.random.choice(range(Bsh[2]))
-        W1 = np.random.choice(range(Wsh[0]))
-        W2 = np.random.choice(range(Wsh[1]))
-        A_ = A[0,A1,A2,:]#np.mean(A,axis=(0,1,2))#A.mean(axis=(0,1,2))
-        B_ = B[0,B1,B2,:]#np.mean(B,axis=(0,1,2))#B.mean(axis=(0,1,2))
-        W_ = W[W1,W2,:,:]#np.mean(W,axis=(0,1))#W.mean(axis=(0,1))
+        A_ = np.median(A,axis=(0,1,2))#A.mean(axis=(0,1,2))
+        B_ = np.median(B,axis=(0,1,2))#B.mean(axis=(0,1,2))
+        W_ = np.median(W,axis=(0,1))#W.mean(axis=(0,1))
     except:
-        A1 = np.random.choice(range(Ash[1]))
-        A2 = np.random.choice(range(Ash[2]))
-        #B1 = np.random.choice(range(Bsh[1]))
-        #B2 = np.random.choice(range(Bsh[2]))
-        W1 = np.random.choice(range(Wsh[0]))
-        W2 = np.random.choice(range(Wsh[1]))
-        A_ = A[0,A1,A2,:]#np.mean(A,axis=(0,1,2))
-        B_ = B[0,:]#np.mean(B,axis=0)
-        W_ = W[W1,W2,:,:]#np.mean(W,axis=(0,1))
+        A_ = np.median(A,axis=(0,1,2))
+        B_ = np.median(B,axis=0)
+        W_ = np.median(W,axis=(0,1))
         
     print('A shape: {0}'.format(np.shape(A_)))
     print('B shape: {0}'.format(np.shape(B_)))
@@ -186,7 +178,7 @@ def DenseApproxJacob(A,B,W):
     F = np.zeros((len(A_),len(B_)))
     for i in range(len(A_)):
         for j in range(len(B_)):
-            if B_[j] > 0.:
+            if B_[j] > 0. and i==j:
                 F[i,j] = W_[i,j]
     return F.T
 

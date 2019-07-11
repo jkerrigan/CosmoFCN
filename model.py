@@ -14,15 +14,15 @@ from time import time
 
 def stacked_layer(x,ksize=3,fsize=128,psize=(8,8),weights=None,trainable=True):
     if weights == None:
-        x_1 = Conv2D(filters=fsize,kernel_size=ksize,padding='same',strides=1,trainable=trainable)(x)
+        x_1 = Conv2D(filters=fsize,kernel_size=ksize,padding='same',strides=1,trainable=trainable,activation=None)(x)
         x_2 = MaxPool2D(pool_size=psize)(x_1)
-        x_3 = BatchNormalization()(x_2)
-        x_4 = ReLU()(x_3)
+#        x_3 = BatchNormalization()(x_2)
+        x_4 = ReLU()(x_2)
     else:
-        x_1 = Conv2D(filters=fsize,kernel_size=ksize,padding='same',strides=1,weights=weights[:2],trainable=trainable)(x)
+        x_1 = Conv2D(filters=fsize,kernel_size=ksize,padding='same',strides=1,weights=weights,trainable=trainable,activation=None)(x)
         x_2 = MaxPool2D(pool_size=psize)(x_1)
-        x_3 = BatchNormalization(weights=weights[2:])(x_2)
-        x_4 = ReLU()(x_3)
+#        x_3 = BatchNormalization(weights=weights[2:])(x_2)
+        x_4 = ReLU()(x_2)
     return x_4
 
 class FCN21CM():
@@ -36,11 +36,11 @@ class FCN21CM():
     
     def FCN(self):
         inputs = Input(shape=self.cube_size)
-        self.s1 = stacked_layer(inputs,ksize=3,fsize=128,psize=4) # 64,64,10,64
-        self.s2 = Dropout(rate=0.)(stacked_layer(self.s1,ksize=3,fsize=256,psize=2)) # 16,16,10,128
-        self.s3 = Dropout(rate=0.)(stacked_layer(self.s2,ksize=3,fsize=512,psize=2)) # 4,4,5,256
-        self.fc1 = Dropout(rate=0.)(stacked_layer(self.s3,ksize=3,fsize=1024,psize=2)) # 1,1,1,2048
-        self.out = Dropout(rate=0.0)(Conv2D(filters=3,kernel_size=1,padding='same',activation='relu')(self.fc1))
+        self.s1 = stacked_layer(inputs,ksize=3,fsize=32,psize=4) # 64,64,10,64
+        self.s2 = Dropout(rate=0.)(stacked_layer(self.s1,ksize=3,fsize=64,psize=2)) # 16,16,10,128
+        self.s3 = Dropout(rate=0.)(stacked_layer(self.s2,ksize=3,fsize=128,psize=2)) # 4,4,5,256
+        self.fc1 = Dropout(rate=0.)(stacked_layer(self.s3,ksize=3,fsize=256,psize=2)) # 1,1,1,2048
+        self.out = Dropout(rate=0.0)(Conv2D(filters=3,kernel_size=1,padding='same',activation=None)(self.fc1))
         self.max_out = GlobalAveragePooling2D()(self.out)
         
         model = Model(inputs=inputs,outputs=self.max_out)
@@ -51,29 +51,28 @@ class FCN21CM():
 
     def probe_FCN(self,layer2output=None,weights=None):
         inputs = Input(shape=self.cube_size)
-        print('w1',np.shape(weights))
         if layer2output == '0':
             model = Model(inputs=inputs,outputs=inputs)
-        self.s1_ = stacked_layer(inputs,ksize=3,fsize=128,psize=4,weights=weights[:6])
+        self.s1_ = stacked_layer(inputs,ksize=3,fsize=32,psize=4,weights=weights[:2])
         if layer2output == '1':
             model = Model(inputs=inputs,outputs=self.s1_)
             return model
 #        print('w2',np.shape(weights[1]))
-        self.s2_ = stacked_layer(self.s1_,ksize=3,fsize=256,psize=2,weights=weights[6:12])
+        self.s2_ = stacked_layer(self.s1_,ksize=3,fsize=64,psize=2,weights=weights[2:4])
         if layer2output == '2':
             model = Model(inputs=inputs,outputs=self.s2_)
             return model
 #        print('w3',np.shape(weights[2]))
-        self.s3_ = stacked_layer(self.s2_,ksize=3,fsize=512,psize=2,weights=weights[12:18])
+        self.s3_ = stacked_layer(self.s2_,ksize=3,fsize=128,psize=2,weights=weights[4:6])
         if layer2output == '3':
             model = Model(inputs=inputs,outputs=self.s3_)
             return model
-        self.fc1_ = stacked_layer(self.s3_,ksize=3,fsize=1024,psize=2,weights=weights[18:24])
+        self.fc1_ = stacked_layer(self.s3_,ksize=3,fsize=256,psize=2,weights=weights[6:8])
         if layer2output == '4':
             model = Model(inputs=inputs,outputs=self.fc1_)
             return model
-        self.out_ = Conv2D(filters=3,kernel_size=1,padding='same',weights=weights[24:26],activation='relu')(self.fc1_)
-        self.max_out = GlobalAveragePooling2D(weights=weights[26:30])(self.out_)
+        self.out_ = Conv2D(filters=3,kernel_size=1,padding='same',weights=weights[8:10],activation=None)(self.fc1_)
+        self.max_out = GlobalAveragePooling2D()(self.out_)
         if layer2output == '5':
             model = Model(inputs=inputs,outputs=self.max_out)
             return model
