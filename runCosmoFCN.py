@@ -17,8 +17,10 @@ save = False
 EKF = False
 # Load data
 
-modelname = 'train_on_1_2'
-training='~/data/shared/v2_filtered_single_sample8.5.h5' 
+modelname = 'train_2500epochs_extralayer'
+#training='~/data/shared/v2_filtered_single_sample8.5.h5' 
+training = '~/data/shared/LaPlanteSims/v2/t21_snapshots_filtered.hdf5'
+#predicting = '~/data/shared/LaPlanteSims/t21_snapshots_downsample_vary_both.hdf5'
 predicting = training
 
 savedpath = os.getcwd()
@@ -26,7 +28,7 @@ if not os.path.isdir(modelname):
 	os.mkdir(modelname)
 os.chdir(modelname)
 
-data_dict = hf.load_21cmCubes_3(os.path.expanduser(training))
+data_dict = hf.load_21cmCubes(training)
 #data = data_dict['data']
 #labels = data_dict['labels']
 
@@ -35,14 +37,14 @@ try:
     fcn.load()
 except:
     print('Model load error.')
-fcn.train(data_dict,epochs=1000,batch_size=200,scalar_=1e0,fgcube=None)
+fcn.train(data_dict,epochs=10000,batch_size=160,scalar_=1e0,fgcube=None)
 fcn.save()
 
 with open('modelsummary.txt','w') as f:
     f.write(str(datetime.datetime.today())+'\n\n')
     f.write('Model file name: ' + modelname + '\n')
     f.write('Training data: ' + training + '\n')
-    f.write('Notes: Training on one sample over and over again. \n')
+    f.write('Notes: Batch 160. training for 2500 epochs. +1 layer\n')
     f.write('Model Summary: \n')
 
 fcn.writesummary()
@@ -97,7 +99,7 @@ if not os.path.isdir(newpath):
 	os.mkdir(newpath)
 os.chdir(newpath)
 
-data_dict_predict = hf.load_21cmCubes_3(os.path.expanduser(predicting))
+data_dict_predict = hf.load_21cmCubes(predicting)
 
 
 snr = np.linspace(0.,0.,len(data_dict_predict['data']))
