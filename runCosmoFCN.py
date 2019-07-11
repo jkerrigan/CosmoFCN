@@ -17,7 +17,7 @@ save = False
 EKF = False
 # Load data
 
-modelname = 'train_2500epochs_extralayer'
+modelname = 'train_2500epochs_nobatchnorm'
 #training='~/data/shared/v2_filtered_single_sample8.5.h5' 
 training = '~/data/shared/LaPlanteSims/v2/t21_snapshots_filtered.hdf5'
 #predicting = '~/data/shared/LaPlanteSims/t21_snapshots_downsample_vary_both.hdf5'
@@ -37,14 +37,14 @@ try:
     fcn.load()
 except:
     print('Model load error.')
-fcn.train(data_dict,epochs=10000,batch_size=160,scalar_=1e0,fgcube=None)
+fcn.train(data_dict,epochs=2500,batch_size=160,scalar_=1e0,fgcube=None)
 fcn.save()
 
 with open('modelsummary.txt','w') as f:
     f.write(str(datetime.datetime.today())+'\n\n')
     f.write('Model file name: ' + modelname + '\n')
     f.write('Training data: ' + training + '\n')
-    f.write('Notes: Batch 160. training for 2500 epochs. +1 layer\n')
+    f.write('Notes: Batch 160. training for 2500 epochs. no batch normalization\n')
     f.write('Model Summary: \n')
 
 fcn.writesummary()

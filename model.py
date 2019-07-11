@@ -11,12 +11,17 @@ matplotlib.use('AGG')
 import matplotlib.pyplot as pl
 import gc
 
-def stacked_layer(x,ksize=3,fsize=128,psize=(8,8),weights=None,trainable=True):
+def stacked_layer(x,ksize=3,fsize=128,psize=(8,8),weights=None,trainable=True,batchnorm=True):
     if weights == None:
-        x_1 = Conv2D(filters=fsize,kernel_size=ksize,padding='same',strides=1,trainable=trainable)(x)
-        x_2 = MaxPool2D(pool_size=psize)(x_1)
-        x_3 = BatchNormalization()(x_2)
-        x_4 = ReLU()(x_3)
+        if batchnorm:
+            x_1 = Conv2D(filters=fsize,kernel_size=ksize,padding='same',strides=1,trainable=trainable)(x)
+            x_2 = MaxPool2D(pool_size=psize)(x_1)
+            x_3 = BatchNormalization()(x_2)
+            x_4 = ReLU()(x_3)
+        else:
+            x_1 = Conv2D(filters=fsize,kernel_size=ksize,padding='same',strides=1,trainable=trainable)(x)
+            x_2 = MaxPool2D(pool_size=psize)(x_1)
+            x_4 = ReLU()(x_2)
     else:
         x_1 = Conv2D(filters=fsize,kernel_size=ksize,padding='same',strides=1,weights=weights[:2],trainable=trainable)(x)
         x_2 = MaxPool2D(pool_size=psize)(x_1)
@@ -37,11 +42,10 @@ class FCN21CM():
         inputs = Input(shape=self.cube_size)
 
 
-        self.s1 = stacked_layer(inputs,ksize=3,fsize=32,psize=4) # 64,64,10,64
-        self.s2 = Dropout(rate=0.0)(stacked_layer(self.s1,ksize=3,fsize=64,psize=2)) # 16,16,10,128
-        self.s3 = Dropout(rate=0.0)(stacked_layer(self.s2,ksize=3,fsize=128,psize=2)) # 4,4,5,256
-        #self.s4 = Dropout(rate=0.0)(stacked_layer(self.s3,ksize=3,fsize=256,psize=2))
-        self.fc1 = Dropout(rate=0.0)(stacked_layer(self.s3,ksize=3,fsize=512,psize=2)) # 1,1,1,2048
+        self.s1 = stacked_layer(inputs,ksize=3,fsize=32,psize=4,batchnorm=False) # 64,64,10,64
+        self.s2 = Dropout(rate=0.0)(stacked_layer(self.s1,ksize=3,fsize=64,psize=2,batchnorm=False)) # 16,16,10,128
+        self.s3 = Dropout(rate=0.0)(stacked_layer(self.s2,ksize=3,fsize=128,psize=2,batchnorm=False)) # 4,4,5,256
+        self.fc1 = Dropout(rate=0.0)(stacked_layer(self.s3,ksize=3,fsize=256,psize=2,batchnorm=False)) # 1,1,1,2048
         self.out = Dropout(rate=0.0)(Conv2D(filters=3,kernel_size=3,padding='same')(self.fc1))
         self.max_out = GlobalMaxPooling2D()(self.out)
         
