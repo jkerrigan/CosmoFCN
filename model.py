@@ -23,10 +23,15 @@ def stacked_layer(x,ksize=3,fsize=128,psize=(8,8),weights=None,trainable=True,ba
             x_2 = MaxPool2D(pool_size=psize)(x_1)
             x_4 = ReLU()(x_2)
     else:
-        x_1 = Conv2D(filters=fsize,kernel_size=ksize,padding='same',strides=1,weights=weights[:2],trainable=trainable)(x)
-        x_2 = MaxPool2D(pool_size=psize)(x_1)
-        x_3 = BatchNormalization(weights=weights[2:])(x_2)
-        x_4 = ReLU()(x_3)
+        if batchnorm:
+            x_1 = Conv2D(filters=fsize,kernel_size=ksize,padding='same',strides=1,weights=weights[:2],trainable=trainable)(x)
+            x_2 = MaxPool2D(pool_size=psize)(x_1)
+            x_3 = BatchNormalization(weights=weights[2:])(x_2)
+            x_4 = ReLU()(x_3)
+        else:
+            x_1 = Conv2D(filters=fsize,kernel_size=ksize,padding='same',strides=1,weights=weights[:2],trainable=trainable)(x)
+            x_2 = MaxPool2D(pool_size=psize)(x_1)
+            x_4 = ReLU()(x_2)
     return x_4
 
 class FCN21CM():
