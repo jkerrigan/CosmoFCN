@@ -20,15 +20,15 @@ EKF = False
 modelname = 'train_2500epochs_nobatchnorm'
 #training='~/data/shared/v2_filtered_single_sample8.5.h5' 
 training = '~/data/shared/LaPlanteSims/v2/t21_snapshots_filtered.hdf5'
-#predicting = '~/data/shared/LaPlanteSims/t21_snapshots_downsample_vary_both.hdf5'
-predicting = training
+predicting = '~/data/shared/LaPlanteSims/t21_snapshots_downsample_vary_both.hdf5'
+#predicting = training
 
 savedpath = os.getcwd()
 if not os.path.isdir(modelname):
 	os.mkdir(modelname)
 os.chdir(modelname)
 
-data_dict = hf.load_21cmCubes(training)
+#data_dict = hf.load_21cmCubes(training)
 #data = data_dict['data']
 #labels = data_dict['labels']
 
@@ -37,9 +37,9 @@ try:
     fcn.load()
 except:
     print('Model load error.')
-fcn.train(data_dict,epochs=2500,batch_size=160,scalar_=1e0,fgcube=None)
-fcn.save()
-
+#fcn.train(data_dict,epochs=2500,batch_size=160,scalar_=1e0,fgcube=None)
+#fcn.save()
+'''
 with open('modelsummary.txt','w') as f:
     f.write(str(datetime.datetime.today())+'\n\n')
     f.write('Model file name: ' + modelname + '\n')
@@ -48,7 +48,7 @@ with open('modelsummary.txt','w') as f:
     f.write('Model Summary: \n')
 
 fcn.writesummary()
-
+'''
 
 # zmid, delta_z, zmean, alpha, kb
 p1_arr = []
@@ -94,7 +94,7 @@ if EKF:
     ekf_model = EKFCNN(probes,weights)
     ekf_model.run_EKF(scaled_EKF_data)
 
-newpath = modelname + '_data'
+newpath = modelname + '_data_2'
 if not os.path.isdir(newpath):
 	os.mkdir(newpath)
 os.chdir(newpath)
