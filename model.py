@@ -59,28 +59,28 @@ class FCN21CM():
         print('w1',np.shape(weights))
         if layer2output == '0':
             model = Model(inputs=inputs,outputs=inputs)
-        self.s1_ = stacked_layer(inputs,ksize=3,fsize=32,psize=4,weights=weights[:6])
+        self.s1_ = stacked_layer(inputs,ksize=3,fsize=32,psize=4,weights=weights[:2],batchnorm=False)
         if layer2output == '1':
             model = Model(inputs=inputs,outputs=self.s1_)
             return model
 #        print('w2',np.shape(weights[1]))
-        self.s2_ = stacked_layer(self.s1_,ksize=3,fsize=64,psize=2,weights=weights[6:12])
+        self.s2_ = stacked_layer(self.s1_,ksize=3,fsize=64,psize=2,weights=weights[2:4],batchnorm=False)
         if layer2output == '2':
             model = Model(inputs=inputs,outputs=self.s2_)
             return model
 #        print('w3',np.shape(weights[2]))
-        self.s3_ = stacked_layer(self.s2_,ksize=3,fsize=128,psize=2,weights=weights[12:18])
+        self.s3_ = stacked_layer(self.s2_,ksize=3,fsize=128,psize=2,weights=weights[4:6],batchnorm=False)
         if layer2output == '3':
             model = Model(inputs=inputs,outputs=self.s3_)
             return model
-        self.fc1_ = stacked_layer(self.s3_,ksize=3,fsize=256,psize=2,weights=weights[18:24])
+        self.fc1_ = stacked_layer(self.s3_,ksize=3,fsize=256,psize=2,weights=weights[6:8],batchnorm=False)
         if layer2output == '4':
             model = Model(inputs=inputs,outputs=self.fc1_)
             return model
-        self.out_ = Conv2D(filters=3,kernel_size=3,padding='same',weights=weights[24:26])(self.fc1_)
-        self.max_out = GlobalMaxPooling2D(weights=weights[26:30])(self.out_)
+        self.out_ = Conv2D(filters=3,kernel_size=3,padding='same',weights=weights[8:],batchnorm=False)(self.fc1_)
+        self.max_out = GlobalMaxPooling2D()(self.out_)
         if layer2output == '5':
-            model = Model(inputs=inputs,outputs=self.out_)
+            model = Model(inputs=inputs,outputs=self.max_out)
             return model
 #0,1,6,7,12,13,18,19,24,25
     def get_probes(self):
