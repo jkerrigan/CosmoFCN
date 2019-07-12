@@ -82,7 +82,7 @@ class FCN21CM():
         if layer2output == '4':
             model = Model(inputs=inputs,outputs=self.fc1_)
             return model
-        self.out_ = Conv2D(filters=3,kernel_size=3,padding='same',weights=weights[8:],batchnorm=False)(self.fc1_)
+        self.out_ = Conv2D(filters=3,kernel_size=3,padding='same',weights=weights[8:])(self.fc1_)
         self.max_out = GlobalMaxPooling2D()(self.out_)
         if layer2output == '5':
             model = Model(inputs=inputs,outputs=self.max_out)
