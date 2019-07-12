@@ -14,7 +14,7 @@ import socket
 import os
 import tensorflow as tf
 
-def load_21cmCubes(cubes='~/data/shared/t21_snapshots_downsample_vary_both.hdf5',partial=False):
+def load_21cmCubes(cubes='~/data/shared/t21_snapshots_downsample_vary_both.hdf5',partial=None):
     # Cubes are in shape 512*512*30
     # Output will be in (X,Y,Z) = (512,512,30)
 #    with h5py.File('/pylon5/as5fp5p/plaplant/21cm/t21_snapshots_downsample.hdf5') as f:
@@ -29,7 +29,7 @@ def load_21cmCubes(cubes='~/data/shared/t21_snapshots_downsample_vary_both.hdf5'
     with h5py.File(file_) as f:
         print(f.keys())
         if partial:
-            dlen = 100
+            dlen = partial
         else:
             dlen = len(f['Data']['t21_snapshots'][...])
         data_dict = {}

@@ -42,7 +42,6 @@ except:
 #fcn.save()
 
 '''
->>>>>>> ad80f51f1ff90f7cf827b96f22ea58d67ccc5404
 with open('modelsummary.txt','w') as f:
     f.write(str(datetime.datetime.today())+'\n\n')
     f.write('Model file name: ' + modelname + '\n')
