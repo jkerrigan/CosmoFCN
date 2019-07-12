@@ -14,7 +14,7 @@ import socket
 import os
 import tensorflow as tf
 
-def load_21cmCubes(cubes='~/data/shared/t21_snapshots_downsample_vary_both.hdf5'):
+def load_21cmCubes(cubes='~/data/shared/t21_snapshots_downsample_vary_both.hdf5',partial=False):
     # Cubes are in shape 512*512*30
     # Output will be in (X,Y,Z) = (512,512,30)
 #    with h5py.File('/pylon5/as5fp5p/plaplant/21cm/t21_snapshots_downsample.hdf5') as f:
@@ -28,10 +28,14 @@ def load_21cmCubes(cubes='~/data/shared/t21_snapshots_downsample_vary_both.hdf5'
 #    file_ = './21cmFastSlices.hdf5'
     with h5py.File(file_) as f:
         print(f.keys())
+        if partial:
+            dlen = 100
+        else:
+            dlen = len(f['Data']['t21_snapshots'][...])
         data_dict = {}
         data_dict['redshifts'] = f['Data']['layer_redshifts'][...]
-        data_dict['data'] = np.asarray([cube.T for cube in f['Data']['t21_snapshots'][...]])
-        data_dict['labels'] = f['Data']['snapshot_labels'][...][:,:3]
+        data_dict['data'] = np.asarray([cube.T for cube in f['Data']['t21_snapshots'][:dlen]])
+        data_dict['labels'] = f['Data']['snapshot_labels'][...][:dlen,:3]
         data_dict['eor_amp'] = np.max(data_dict['data'][0])
     print('Dataset size {0}'.format(np.shape(data_dict['data'])))
     print('Label size {0}'.format(np.shape(data_dict['labels'])))
@@ -355,6 +359,13 @@ def plot_cosmo_params(t1_arr,p1_arr,err_arr,param,fname,spec=None):
     pl.savefig('{}.pdf'.format(fname),dpi=300)
     pl.close()
 
+def distribution_measure(t1_arr,p1_arr,err_arr):
+#    for i in range(len(t1_arr)):
+#        print('err: {0} true: {1} predict: {2}'.format(err_arr[i],t1_arr[i],p1_arr[i]))
+#        print(err_arr[i]>=np.abs(t1_arr[i]-p1_arr[i]))
+    acceptable = np.sum([1 if err_arr[i]>=np.abs(t1_arr[i]-p1_arr[i]) else 0 for i in range(len(t1_arr))])#np.sum((np.array(err_arr) > np.abs(np.array(t1_arr)-np.array(p1_arr))))
+    print('acceptable: {}'.format(acceptable))
+    print(r'% of measurements within 1 std. : {0}'.format((1.*acceptable)/len(p1_arr)))
 
 
 if __name__ == "__main__":
