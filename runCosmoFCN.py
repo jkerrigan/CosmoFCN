@@ -82,14 +82,14 @@ t0 = time()
 hf.scale_sample(data_dict)
 print('Numpy implementation time: ',time() - t0)
 '''
-data_dict_predict = hf.load_21cmCubes(predicting,partial=True)
+data_dict_predict = hf.load_21cmCubes(predicting,partial=10)
 
 if EKF:
-    cov_num = 200
+    cov_num = 100
     rnd_scale = 256#np.random.choice(range(64,256,1))
-    noise =  0.*np.random.normal(loc=0.,scale=2.*np.std(data_dict_predict['data'][0]),size=(cov_num,512,512,30))
+    noise =  .0*np.random.normal(loc=0.,scale=2.*np.std(data_dict_predict['data'][0]),size=(cov_num,512,512,30))
 #    dset_EKF = data_dict_predict['data'][:cov_num]# + noise
-    dset_EKF = [data_dict_predict['data'][30] for i in range(cov_num)]
+    dset_EKF = [data_dict_predict['data'][6] for i in range(cov_num)]
     print('EKF dataset size: {}'.format(np.shape(dset_EKF)))
     scaled_EKF_data = np.asarray(list(map(hf.scale_,list(map(hf.normalize,dset_EKF)),cov_num*[rnd_scale]))).reshape(cov_num,rnd_scale,rnd_scale,30)
     print('Scaled EKF data',np.shape(scaled_EKF_data))
@@ -105,8 +105,8 @@ os.chdir(newpath)
 
 
 
-snr = np.linspace(0.,0.,len(data_dict_predict['data']))
-for i in range(100):#len(data_dict_predict['data'])):
+snr = np.linspace(0.,0.,200)#*len(data_dict_predict['data']))
+for i in range(200):#len(data_dict_predict['data'])):
     print('Predicting on sample {0}')
     redshifts = data_dict_predict['redshifts']
 #    eor_amp = data_dict_predict['eor_amp']
@@ -114,7 +114,7 @@ for i in range(100):#len(data_dict_predict['data'])):
     #    fgs = build_fg_z_cube(redshifts,eor_amp,scalar)
     #    combined_cubes = np.add(data_dict['data'][-i],fgs)
     #else:
-    combined_cubes = data_dict_predict['data'][30]#-np.mod(i,50)]
+    combined_cubes = data_dict_predict['data'][6]#-np.mod(i,50)]
     print(np.shape(combined_cubes))
     rnd_scale = 256 #np.random.choice(range(64,256,1))
     #noise = np.zeros((512,512,30))#
@@ -124,7 +124,7 @@ for i in range(100):#len(data_dict_predict['data'])):
     print('Noise std: {}'.format(np.std(noise)))
     #data_sample = np.expand_dims(combined_cubes,axis=0)
     data_sample = hf.scale_(hf.normalize(combined_cubes + noise),rnd_scale).reshape(1,rnd_scale,rnd_scale,30)
-    label_sample = data_dict_predict['labels'][30]#-np.mod(i,200)]
+    label_sample = data_dict_predict['labels'][6]#-np.mod(i,200)]
     print(label_sample.shape)
     print('scaled sample shape',np.shape(data_sample))
     predict = fcn.fcn_model.predict(data_sample)[0]

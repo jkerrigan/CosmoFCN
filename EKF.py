@@ -16,7 +16,7 @@ class EKFCNN():
 
     def __init__(self,probes,weights):
         self.probes = probes
-        self.weight_layers = np.array(weights)[[0,6,12,18,24]]
+        self.weight_layers = np.array(weights)[[0,2,4,6,8]]
         self.sess = tf.Session()
         self.successive_layer = []
 
@@ -38,6 +38,7 @@ class EKFCNN():
         Qs = np.copy(self.Qs)
         weight_layers = self.weight_layers#[model_layer.get_weights()[0] for model_layer in self.model] #this may not be correct
         #model_covar_matrix = np.zeros((30,30))
+#        diffX = np.copy(x)
         diffX = np.zeros_like(x)
 #        diffX += x
         for i in range(30):
@@ -59,7 +60,10 @@ class EKFCNN():
 #        print('Number of probes: ',len(self.probes))
 #        pred_layers_b = [pred.predict(x) for pred in self.probes]
 #        print('Total number of probes is: ',len(pred_layers_b))
-        jacobians = [jacobianCNN(plb,W,probe,output=False) for i,(W,(probe,plb)) in enumerate(zip(weight_layers,(zip(self.probes,offset_pred_layers))))]
+#        jacobians = [DenseApproxJacob(pred_layers_b[i],pred_layers_b[i+1],weight_layers[i]) for i in range(len(pred_layers_b)-1)]
+        
+        jacobians = [jacobian_v2(pred_layers_b[i],pred_layers_b[i+1],weight_layers[i]) for i in range(len(pred_layers_b)-1)]
+        #jacobians = [jacobianCNN(plb,W,probe,output=False) for i,(W,(probe,plb)) in enumerate(zip(weight_layers,(zip(self.probes,offset_pred_layers))))]
         print('Shape of all Jacobians',np.shape(jacobians))
         # plb is now layer l-1 and layer l
         covar_out = covar_recursive(covmat_0,jacobians,Qs)
@@ -76,13 +80,20 @@ def covar_recursive(cov0,jacobians,Qs):
         return cov0
     else:
         jlen = len(jacobians[0])
-        #jacob = jacobians[0][0]
-        jacobs_masked = np.ma.array(jacobians[0],mask=jacobians[0]<0.)
-        jacob = np.ma.mean(jacobians[0],axis=0)
-        sigmas = np.ma.dot(jacob,np.ma.dot(cov0,jacob.T))#(np.matmul(jacob,np.matmul(cov0,jacob.T)))
-#        sigmas = np.nanmean([(np.matmul(jacob,np.matmul(cov0,jacob.T))) for jacob in jacobians[0]],axis=0)
-#        sigmas = (np.matmul(jacob,np.matmul(cov0,jacob.T)))
-#        sigmas = np.sqrt(np.nansum([(np.matmul(jacob,np.matmul(cov0,jacob.T)))**2 for jacob in jacobians[0]],axis=0))
+        jacob = jacobians[0]
+        #jacobs_masked = np.ma.array(jacobians[0],mask=jacobians[0]<0.)
+        #jacob = np.ma.mean(jacobians[0],axis=0)
+        #sigmas = np.ma.dot(jacob,np.ma.dot(cov0,jacob.T))
+
+# For dense approx. jacobians
+#        sigmas = (np.matmul(jacob.T,np.matmul(cov0,jacob)))
+
+# For brute force jacobians
+        sig = np.matmul(cov0,np.mean(jacob,axis=(0,1)))
+        #sig = np.einsum('ij,kjlm->iklm',cov0,jacob.T)
+        sigmas = np.matmul(np.mean(jacob.T,axis=(2,3)),sig)
+        #sigmas = np.einsum('ijkl,kmji->lm',jacob,sig)
+
         sigmaQ = sigmas + Qs[0]
 #        sigmaQ /= Qsh[0]*Qsh[1]
 #        sigmaQ /= np.nanstd(sigmaQ)
@@ -172,6 +183,31 @@ def jacobianCNN(x,W,probe,output=False):
     print('F shape:',np.shape(F))
     return F
 
+def DenseApproxJacob(A,B,W):
+    # A is the prior layer prediction
+    # B is the current layer prediction
+    Ash = np.shape(A)
+    Bsh = np.shape(B)
+    Wsh = np.shape(W)
+    try:
+        A_ = np.mean(A,axis=(0,1,2))#A.mean(axis=(0,1,2))
+        B_ = np.mean(B,axis=(0,1,2))#B.mean(axis=(0,1,2))
+        W_ = np.mean(W,axis=(0,1))#W.mean(axis=(0,1))
+    except:
+        A_ = np.mean(A,axis=(0,1,2))
+        B_ = np.mean(B,axis=0)
+        W_ = np.mean(W,axis=(0,1))
+        
+    print('A shape: {0}'.format(np.shape(A_)))
+    print('B shape: {0}'.format(np.shape(B_)))
+    print('W shape: {0}'.format(np.shape(W_)))
+    F = np.zeros_like(W_)#np.zeros((len(A_),len(B_)))
+    for i in range(len(A_)):
+        for j in range(len(B_)):
+            if B_[j] > 0.:# and i==j:
+                F[i,j] = W_[i,j]
+    return F#.reshape(len(A_),len(A_))
+
 def relu_where(W,x):
     sh = np.shape(W)
     W_out = np.zeros_like(W)
@@ -201,8 +237,8 @@ def get_QCNN(x):
 #        Q_quad /= np.nansum(Q_quad)
     except:
         Q_quad = np.array(Q_(x))
-    Q_quad_mask = np.ma.array(Q_quad,mask=Q_quad<=0.)
-    Q_quad = np.ma.mean(Q_quad_mask,axis=0)
+    #Q_quad_mask = np.ma.array(Q_quad,mask=Q_quad<=0.)
+    Q_quad = np.mean(Q_quad,axis=0)
 #    x_sh = np.shape(x)
 #    print('x shape',np.shape(x))
 #    Q = np.zeros((x_sh[-1],x_sh[-1]))
@@ -222,6 +258,35 @@ def get_QCNN(x):
 #    Q_quad = np.zeros((x_sh[-1],x_sh[-1]))
     return Q_quad#Q/(x_sh[0]-1.)
 
+def jacobian_v2(x0,x1,W):
+    x0 = x0.squeeze()
+    x1 = x1.squeeze()
+    try:
+        kx_,ky_,j_ = np.shape(x1)
+    except:
+        kx_ = 1
+        ky_ = 1
+        j_ = len(x1)
+    null1,null2,j_ = np.shape(x0)
+    nx_,ny_,i_,j_ = np.shape(W)
+    #W = np.where(W>0.,W,0.)
+    F = np.zeros((kx_,ky_,i_,j_)) 
+    for kx in range(kx_):
+        for ky in range(ky_):
+            for j in range(j_):
+                for i in range(i_):
+                    for nx in range(-nx_/2 + 1,nx_/2 + 1):
+                        for ny in range(-ny_/2 + 1,ny_/2 + 1):
+                            try:
+                                if np.ndim(x1) > 2:
+                                    if x1[kx,ky,j]>0:
+                                        F[kx,ky,i,j] += W[kx-nx,ky-ny,i,j]
+                                else:
+                                    if x1[j]>0:
+                                        F[kx,ky,i,j] += W[kx-nx,ky-ny,i,j]
+                            except IndexError:
+                                pass
+    return F
 
 def jacob_tensor(W,X):
     Wsh = np.shape(W)

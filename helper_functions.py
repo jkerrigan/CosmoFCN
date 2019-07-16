@@ -269,8 +269,8 @@ def empirical_error_plots(t1_arr,p1_arr,err_arr,param,fname,spec=None):
     pl.figure()
     ax1 = pl.subplot(211)
 #    ax1.set_title(param)
-    ax1.axvline(np.mean(t1_arr),0.,1.,linestyle='--',color='black',label='{0}$_{\rm{true}}$'.format(param))
-    ax1.axvline(np.mean(p1_arr),0.,1.,linestyle='--',color='red',label='{0}$_{\rm{pred}}$'.format(param))
+    ax1.axvline(np.mean(t1_arr),0.,1.,linestyle='--',color='black',label='{0}'.format('true'))
+    ax1.axvline(np.mean(p1_arr),0.,1.,linestyle='--',color='red',label='{0}'.format('pred'))
     
 #    ax1.text(np.mean(t1_arr)*0.95,0.1,r'${0}$'.format(param),rotation=90.)
 #    ax1.text(np.mean(p1_arr)*0.95,0.1,r'{0}$_{{pred}}$'.format(param),rotation=90.)
