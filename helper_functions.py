@@ -17,15 +17,12 @@ import tensorflow as tf
 def load_21cmCubes(cubes='~/data/shared/t21_snapshots_downsample_vary_both.hdf5',partial=None):
     # Cubes are in shape 512*512*30
     # Output will be in (X,Y,Z) = (512,512,30)
-#    with h5py.File('/pylon5/as5fp5p/plaplant/21cm/t21_snapshots_downsample.hdf5') as f:
-#    with h5py.File('/data4/plaplant/21cm/t21_snapshots_downsample.hdf5') as f:
     host = socket.getfqdn()
     print('Looking for data according to hostname: {}'.format(host))
     if host.rfind('intrepid') > 0:
         file_ = '/data4/plaplant/21cm/t21_snapshots_downsample_vary_both.hdf5'
     elif host.rfind('brown') > 0:
         file_ = os.path.expanduser(cubes)
-#    file_ = './21cmFastSlices.hdf5'
     with h5py.File(file_) as f:
         print(f.keys())
         if partial:
@@ -90,26 +87,6 @@ def redshift_avg(z0,z_diff=0.4):
     low_freq = freqs[z0_ind-adj_z_diff_low[0]]
     return low_freq,high_freq
 
-#def z_block(f1,f2):
-#    freqs = np.linspace(20.,300.,1024)
-#    f1_ind = np.argmin(np.abs(f1-freqs))
-#    f2_ind = np.argmin(np.abs(f2-freqs))
-#    block = np.zeros(1024)
-#    block[f1_ind:f2_ind] = 1.
-#    return block
-
-def fg_cube(n,mean_amp):
-    # RA,DEC,Freq.
-    cube = np.zeros((512,512,1024))
-    freqs = np.linspace(0.02,0.3,1024)
-    ras = np.random.choice(range(512),size=n)
-    decs = np.random.choice(range(512),size=n)
-    indices = np.random.choice(np.linspace(-0.5,0.),size=n)
-    fluxes = np.random.choice(np.linspace(0.1*mean_amp,mean_amp),size=n)
-    for ((i,f),(r,d)) in zip(zip(indices,fluxes),zip(ras,decs)):
-        cube[r,d,:] += f*(freqs/0.15)**(i)
-    return cube
-
 def mean_z(cube,mask):
     return np.mean(np.multiply(cube,mask),axis=-1)
     #return np.mean(cube*mask,axis=-1)
@@ -126,16 +103,6 @@ def convolve(sky,beam):
     BEAM = np.fft.fft2(beam)
     return np.fft.ifft2(SKY*BEAM).real
 
-#def build_fg_z_cube(rs,eor_amp,scalar=1e5):
-#    n_sources = int(np.random.normal(loc=8000,scale=2000))
-#    cube = fg_cube(n_sources,scalar*eor_amp)
-#    rs_freqs = list(map(redshift_avg,rs))
-#    z_mask = list(map(z_block,rs_freqs))
-#    fg_z_cube = list(map(mean_z,len(z_mask)*[cube],z_mask)) #[mean_z(cube,zm) for zm in z_mask]
-#    gauss = gaussian(512,512,10.)
-#    dirty_cube = np.array(list(map(convolve,fg_z_cube,len(rs)*[gauss]))).T
-#    return dirty_cube
-
 def random_perm(x):
     rnd = np.random.rand()
     if rnd < .3:
@@ -145,26 +112,19 @@ def random_perm(x):
     else:
         return x[::-1,::-1,:]
 
-def scale_sample(data_dict,fgcube=None):
-    # dataset comes in sizes of 512x512x30 (2Gpc,2Gpc,30 z slices)
-    # we want to subsample this space to sizes < 1Gpc
+def scale_sample(data_dict):
+    '''
+    Subsampling function performed on a cpu.
+    '''
+    # Dataset comes in sizes of 512x512x30 (2Gpc,2Gpc,30 z slices)
+    # We want to subsample this space to sizes < 1Gpc
     new_dict = {}
-    scale = 256 #np.random.choice(range(64,256,30)) #32 minimum because of pooling operations (min 62.5 Gpc)
+    scale = 256 # Scale fixed
     print('Sampled to the scale of {} Mpc'.format(2000.*scale/512.))
     print('Length of data {}'.format(len(data_dict['data'])))
     print('Scale {}'.format(scale))
     dataset_size = np.shape(data_dict['data'])[0]
-    if fgcube:
-        if False:#np.random.rand() > .0:
-            rnd_fgs = np.random.choice(range(len(data_dict['foregrounds'])),size=len(data_dict['data']))
-            fgs_realize = list(map(random_perm,np.array(data_dict['foregrounds'])[rnd_fgs]))
-            print('FG Realizations {}'.format(len(fgs_realize)))
-            combined_cubes = np.add(data_dict['data'],fgs_realize)
-        else:
-            combined_cubes = data_dict['data']
-    else:
-        combined_cubes = np.copy(data_dict['data'])
-        #del(data_dict['data'])
+    combined_cubes = np.copy(data_dict['data'])
     scales = len(combined_cubes)*[scale]
     print('.............')
     print('Combined cube size {}'.format(np.shape(combined_cubes)))
@@ -178,6 +138,11 @@ def scale_sample(data_dict,fgcube=None):
     return new_dict
 
 def tf_scale(data_dict):
+    '''
+    Subsampling function using tensorflow operations. Does not work in this form
+    due to tensorflows inability to load a dataset of this size into virtual 
+    memory.
+    '''
     def resize(data,size):
         s_x = np.random.choice(range(512-size))
         s_y = np.random.choice(range(512-size))

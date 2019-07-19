@@ -15,6 +15,7 @@ import datetime
 
 save = False
 EKF = True
+N = 100 # Number of prediction trials to run
 # Load data
 
 modelname = 'train_2500epochs_nobatchnorm'
@@ -73,28 +74,19 @@ p3_arr_err = []
 p4_arr_err = []
 p5_arr_err = []
 
-#print('Running test...')
-#t0 = time()
-#hf.tf_scale(data_dict)
-#print('Tensorflow implementation time: ',time() - t0)
-'''
-t0 = time()
-hf.scale_sample(data_dict)
-print('Numpy implementation time: ',time() - t0)
-'''
 data_dict_predict = hf.load_21cmCubes(predicting,partial=10)
 
 if EKF:
     cov_num = 100
     rnd_scale = 256#np.random.choice(range(64,256,1))
-    noise =  .0*np.random.normal(loc=0.,scale=2.*np.std(data_dict_predict['data'][0]),size=(cov_num,512,512,30))
+    noise =  1.0*np.random.normal(loc=0.,scale=1.,size=(cov_num,512,512,30))#np.std(data_dict_predict['data'][0]),size=(cov_num,512,512,30))
 #    dset_EKF = data_dict_predict['data'][:cov_num]# + noise
-    dset_EKF = [data_dict_predict['data'][6] for i in range(cov_num)]
+    dset_EKF = [data_dict_predict['data'][7] for i in range(cov_num)]
     print('EKF dataset size: {}'.format(np.shape(dset_EKF)))
     scaled_EKF_data = np.asarray(list(map(hf.scale_,list(map(hf.normalize,dset_EKF)),cov_num*[rnd_scale]))).reshape(cov_num,rnd_scale,rnd_scale,30)
     print('Scaled EKF data',np.shape(scaled_EKF_data))
     probes,weights = fcn.get_probes()
-    ekf_model = EKFCNN(probes,weights)
+    ekf_model = EKFCNN(probes,weights,jacobian_mode=True)
     ekf_model.run_EKF(scaled_EKF_data)
 
 newpath = modelname + '_data_2'
@@ -105,31 +97,30 @@ os.chdir(newpath)
 
 
 
-snr = np.linspace(0.,0.,200)#*len(data_dict_predict['data']))
-for i in range(200):#len(data_dict_predict['data'])):
+snr = np.linspace(1.0,1.0,N)#*len(data_dict_predict['data']))
+for i in range(N):#len(data_dict_predict['data'])):
     print('Predicting on sample {0}')
     redshifts = data_dict_predict['redshifts']
-#    eor_amp = data_dict_predict['eor_amp']
-    #if False:#np.random.rand()>1.1:
-    #    fgs = build_fg_z_cube(redshifts,eor_amp,scalar)
-    #    combined_cubes = np.add(data_dict['data'][-i],fgs)
-    #else:
-    combined_cubes = data_dict_predict['data'][6]#-np.mod(i,50)]
+    combined_cubes = data_dict_predict['data'][7]#-np.mod(i,50)]
     print(np.shape(combined_cubes))
     rnd_scale = 256 #np.random.choice(range(64,256,1))
     #noise = np.zeros((512,512,30))#
 
-    noise =  snr[i]*np.random.normal(loc=0.,scale=snr[i]*np.std(combined_cubes),size=(512,512,30))#snr[i]*np.std(combined_cubes)*np.random.rand(512,512,30)
+    noise =  snr[i]*np.random.normal(loc=0.,scale=1.0,size=(512,512,30))#snr[i]*np.std(combined_cubes)*np.random.rand(512,512,30)
     print('Data std: {}'.format(np.std(combined_cubes)))
     print('Noise std: {}'.format(np.std(noise)))
     #data_sample = np.expand_dims(combined_cubes,axis=0)
     data_sample = hf.scale_(hf.normalize(combined_cubes + noise),rnd_scale).reshape(1,rnd_scale,rnd_scale,30)
-    label_sample = data_dict_predict['labels'][6]#-np.mod(i,200)]
+    label_sample = data_dict_predict['labels'][7]#-np.mod(i,200)]
     print(label_sample.shape)
     print('scaled sample shape',np.shape(data_sample))
     predict = fcn.fcn_model.predict(data_sample)[0]
 
     predict_err = ekf_model.pred_uncertainty(data_sample)
+    if np.any(np.isnan(predict_err)):
+        print('Warning!: At least 1 estimated uncertainty is NaN.')
+        
+    predict_err = np.nan_to_num(predict_err)
     print('Predicted Midpoint {0} Duration {1} Mean Z {2}'.format(*predict))
     p1_arr.append(predict[0])
     p2_arr.append(predict[1])

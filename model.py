@@ -87,7 +87,7 @@ class FCN21CM():
         if layer2output == '5':
             model = Model(inputs=inputs,outputs=self.max_out)
             return model
-#0,1,6,7,12,13,18,19,24,25
+
     def get_probes(self):
         layers = [str(i) for i in range(1,6)]
         weight_layers = self.get_weights()
